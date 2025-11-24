@@ -122,6 +122,7 @@ There are Aiken tests for the unlocking script and the used transactions set in 
 To run the tests, just [install Aiken](https://aiken-lang.org/installation-instructions) and use the command:
 
 ```bash
-aiken test
+cd zk-bridge
+aiken check
 ```
 
