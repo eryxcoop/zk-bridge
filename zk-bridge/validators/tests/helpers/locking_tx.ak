@@ -19,8 +19,8 @@ pub fn simple_locking_tx() -> Transaction {
             stake_credential: None,
           },
           value: build_value_with_native_token(
-            test_constants.bridge_locked_token_policy_id,
-            test_constants.bridge_locked_token_asset_name,
+            env.transferred_asset_policy_id,
+            env.transferred_asset_name,
             1,
           ),
           datum: NoDatum,
@@ -35,8 +35,8 @@ pub fn simple_locking_tx() -> Transaction {
 pub fn locking_tx_output(amount_of_assets: Int) {
   let locking_tx_datum =
     LockingTxDatum {
-      bridge_id: "my_bridge_id",
-      destination_address: VerificationKey("my_verification_key_in_chain_B"),
+      bridge_id: env.bridge_minting_policy_id,
+      destination_address: test_constants.destination_chain_address,
     }
   Output {
     address: Address {
@@ -44,8 +44,8 @@ pub fn locking_tx_output(amount_of_assets: Int) {
       stake_credential: None,
     },
     value: build_value_with_native_token(
-      test_constants.bridge_locked_token_policy_id,
-      test_constants.bridge_locked_token_asset_name,
+      env.transferred_asset_policy_id,
+      env.transferred_asset_name,
       amount_of_assets,
     ),
     datum: InlineDatum(locking_tx_datum),

@@ -1,8 +1,10 @@
+use aiken/crypto.{VerificationKeyHash}
 use ak_381/groth16.{Proof}
 use cardano/address.{Address, VerificationKey}
 use cardano/assets
 use cardano/transaction.{Output, Transaction, TransactionId}
-use common_types.{BurningTxData, ZK}
+use common_types.{BurningTxData}
+use env
 use tests/helpers/test_constants
 
 pub fn valid_burning_proof() -> Proof {
@@ -21,73 +23,61 @@ pub fn invalid_burning_proof() -> Proof {
   }
 }
 
-pub fn valid_burning_tx_data_for_tx(
-  unlocking_tx: Transaction,
-) -> ZK<BurningTxData> {
+pub fn valid_burning_tx_data_for_tx(unlocking_tx: Transaction) -> BurningTxData {
   expect [_used_txs_output, unlocked_funds_output, ..] = unlocking_tx.outputs
   let Output { address: destination_address, value, .. } = unlocked_funds_output
+  expect VerificationKey(destination_address_vk) =
+    destination_address.payment_credential
 
   let amount_to_unlock =
     assets.quantity_of(
       value,
-      test_constants.bridge_locked_token_policy_id,
-      test_constants.bridge_locked_token_asset_name,
+      env.transferred_asset_policy_id,
+      env.transferred_asset_name,
     )
-
-  ZK {
-    redeemer: BurningTxData {
-      tx_id: test_constants.burning_transaction_id,
-      transferred_amount: amount_to_unlock,
-      transferred_asset_name: test_constants.bridge_locked_token_asset_name,
-      transferred_asset_policy_id: test_constants.bridge_locked_token_policy_id,
-      destination_address,
-    },
-    proofs: [valid_burning_proof()],
+  BurningTxData {
+    tx_id: test_constants.burning_transaction_id,
+    transferred_amount: amount_to_unlock,
+    transferred_asset_name: env.transferred_asset_name,
+    transferred_asset_policy_id: env.transferred_asset_policy_id,
+    destination_address_vk,
+    burning_tx_proof: valid_burning_proof(),
   }
 }
 
 pub fn valid_unlocking_redeemer(
   burning_tx_id: TransactionId,
   amount_to_unlock: Int,
-  destination_address: Address,
+  destination_address_vk: VerificationKeyHash,
 ) {
-  ZK {
-    redeemer: BurningTxData {
-      tx_id: burning_tx_id,
-      transferred_amount: amount_to_unlock,
-      transferred_asset_name: test_constants.bridge_locked_token_asset_name,
-      transferred_asset_policy_id: test_constants.bridge_locked_token_policy_id,
-      destination_address,
-    },
-    proofs: [valid_burning_proof()],
+  BurningTxData {
+    tx_id: burning_tx_id,
+    transferred_amount: amount_to_unlock,
+    transferred_asset_name: env.transferred_asset_name,
+    transferred_asset_policy_id: env.transferred_asset_policy_id,
+    destination_address_vk,
+    burning_tx_proof: valid_burning_proof(),
   }
 }
 
-pub fn burning_tx_data_with_invalid_burning_proof() -> ZK<BurningTxData> {
-  ZK {
-    redeemer: BurningTxData {
-      tx_id: test_constants.burning_transaction_id,
-      transferred_amount: 3,
-      transferred_asset_name: test_constants.bridge_locked_token_asset_name,
-      transferred_asset_policy_id: test_constants.bridge_locked_token_policy_id,
-      destination_address: test_constants.chain_a_destination_address,
-    },
-    proofs: [invalid_burning_proof()],
+pub fn burning_tx_data_with_invalid_burning_proof() -> BurningTxData {
+  BurningTxData {
+    tx_id: test_constants.burning_transaction_id,
+    transferred_amount: 3,
+    transferred_asset_name: env.transferred_asset_name,
+    transferred_asset_policy_id: env.transferred_asset_policy_id,
+    destination_address_vk: test_constants.chain_a_destination_address_vk,
+    burning_tx_proof: invalid_burning_proof(),
   }
 }
 
-pub fn burning_tx_data_with_incorrect_destination_address() -> ZK<BurningTxData> {
-  ZK {
-    redeemer: BurningTxData {
-      tx_id: test_constants.burning_transaction_id,
-      transferred_amount: 3,
-      transferred_asset_name: test_constants.bridge_locked_token_asset_name,
-      transferred_asset_policy_id: test_constants.bridge_locked_token_asset_name,
-      destination_address: Address {
-        payment_credential: VerificationKey("an_incorrect_vk"),
-        stake_credential: None,
-      },
-    },
-    proofs: [valid_burning_proof()],
+pub fn burning_tx_data_with_incorrect_destination_address() -> BurningTxData {
+  BurningTxData {
+    tx_id: test_constants.burning_transaction_id,
+    transferred_amount: 3,
+    transferred_asset_name: env.transferred_asset_name,
+    transferred_asset_policy_id: env.transferred_asset_name,
+    destination_address_vk: "an_incorrect_vk",
+    burning_tx_proof: valid_burning_proof(),
   }
 }

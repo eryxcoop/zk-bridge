@@ -4,7 +4,7 @@ use cardano/assets.{PolicyId}
 use cardano/transaction.{
   InlineDatum, Input, NoDatum, Output, OutputReference, Transaction,
 }
-use common_types.{TxUpdaterDatum}
+use common_types.{TxsUpdaterDatum}
 use env
 use tests/helpers/values.{build_value_with_native_token}
 
@@ -34,7 +34,7 @@ fn generate_txs_updater_mint_tx(
     outputs: [
       Output {
         address: Address {
-          payment_credential: env.txs_updater_spending_script,
+          payment_credential: env.burning_txs_updater_spending_script,
           stake_credential: None,
         },
         value: build_value_with_native_token(
@@ -42,7 +42,7 @@ fn generate_txs_updater_mint_tx(
           nft_asset_name,
           nft_amount,
         ),
-        datum: InlineDatum(TxUpdaterDatum { merkle_root: output_datum }),
+        datum: InlineDatum(TxsUpdaterDatum { merkle_root: output_datum }),
         reference_script: None,
       },
     ],
@@ -52,9 +52,9 @@ fn generate_txs_updater_mint_tx(
 pub fn valid_txs_updater_mint_tx() -> Transaction {
   generate_txs_updater_mint_tx(
     output_datum: crypto.blake2b_224(""),
-    unique_mint_utxo_ref: env.txs_updater_unique_mint_utxo_ref,
-    nft_policy_id: env.txs_updater_policy_id,
-    nft_asset_name: env.txs_updater_asset_name,
+    unique_mint_utxo_ref: env.burning_txs_updater_unique_mint_utxo_ref,
+    nft_policy_id: env.burning_txs_updater_policy_id,
+    nft_asset_name: env.burning_txs_updater_asset_name,
     nft_amount: 1,
   )
 }
@@ -62,9 +62,9 @@ pub fn valid_txs_updater_mint_tx() -> Transaction {
 pub fn txs_updater_mint_tx_with_invalid_datum() -> Transaction {
   generate_txs_updater_mint_tx(
     output_datum: "an_invalid_hash",
-    unique_mint_utxo_ref: env.txs_updater_unique_mint_utxo_ref,
-    nft_policy_id: env.txs_updater_policy_id,
-    nft_asset_name: env.txs_updater_asset_name,
+    unique_mint_utxo_ref: env.burning_txs_updater_unique_mint_utxo_ref,
+    nft_policy_id: env.burning_txs_updater_policy_id,
+    nft_asset_name: env.burning_txs_updater_asset_name,
     nft_amount: 1,
   )
 }
@@ -75,8 +75,8 @@ pub fn txs_updater_mint_tx_for_an_incorrect_utxo() -> Transaction {
   generate_txs_updater_mint_tx(
     output_datum: crypto.blake2b_224(""),
     unique_mint_utxo_ref: invalid_utxo_ref,
-    nft_policy_id: env.txs_updater_policy_id,
-    nft_asset_name: env.txs_updater_asset_name,
+    nft_policy_id: env.burning_txs_updater_policy_id,
+    nft_asset_name: env.burning_txs_updater_asset_name,
     nft_amount: 1,
   )
 }
@@ -84,9 +84,9 @@ pub fn txs_updater_mint_tx_for_an_incorrect_utxo() -> Transaction {
 pub fn txs_updater_mint_with_incorrect_nft_policy_id() -> Transaction {
   generate_txs_updater_mint_tx(
     output_datum: crypto.blake2b_224(""),
-    unique_mint_utxo_ref: env.txs_updater_unique_mint_utxo_ref,
+    unique_mint_utxo_ref: env.burning_txs_updater_unique_mint_utxo_ref,
     nft_policy_id: "an_incorrect_policy_id",
-    nft_asset_name: env.txs_updater_asset_name,
+    nft_asset_name: env.burning_txs_updater_asset_name,
     nft_amount: 1,
   )
 }
@@ -94,8 +94,8 @@ pub fn txs_updater_mint_with_incorrect_nft_policy_id() -> Transaction {
 pub fn txs_updater_mint_with_incorrect_nft_asset_name() -> Transaction {
   generate_txs_updater_mint_tx(
     output_datum: crypto.blake2b_224(""),
-    unique_mint_utxo_ref: env.txs_updater_unique_mint_utxo_ref,
-    nft_policy_id: env.txs_updater_policy_id,
+    unique_mint_utxo_ref: env.burning_txs_updater_unique_mint_utxo_ref,
+    nft_policy_id: env.burning_txs_updater_policy_id,
     nft_asset_name: "an_incorrect_asset_name",
     nft_amount: 1,
   )
@@ -104,9 +104,9 @@ pub fn txs_updater_mint_with_incorrect_nft_asset_name() -> Transaction {
 pub fn txs_updater_mint_with_incorrect_nft_asset_amount() -> Transaction {
   generate_txs_updater_mint_tx(
     output_datum: crypto.blake2b_224(""),
-    unique_mint_utxo_ref: env.txs_updater_unique_mint_utxo_ref,
-    nft_policy_id: env.txs_updater_policy_id,
-    nft_asset_name: env.txs_updater_asset_name,
+    unique_mint_utxo_ref: env.burning_txs_updater_unique_mint_utxo_ref,
+    nft_policy_id: env.burning_txs_updater_policy_id,
+    nft_asset_name: env.burning_txs_updater_asset_name,
     nft_amount: 2,
   )
 }

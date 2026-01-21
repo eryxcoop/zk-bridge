@@ -1,9 +1,9 @@
 use cardano/address.{Address, Script}
 use cardano/assets.{PolicyId}
 use cardano/transaction.{
-  InlineDatum, Input, NoDatum, Output, Spend, Transaction,
+  InlineDatum, Input, NoDatum, Output, ScriptPurpose, Spend, Transaction,
 }
-use common_types.{MerkleRoot, TxUpdaterDatum}
+use common_types.{MerkleRoot, TxsUpdaterDatum}
 use env
 use tests/helpers/burning_tx_data.{valid_unlocking_redeemer}
 use tests/helpers/locking_tx.{locking_tx_output}
@@ -23,7 +23,7 @@ fn burning_tx_updater_output(
       stake_credential: None,
     },
     value: build_value_with_native_token(policy_id, asset_name, asset_ammount),
-    datum: InlineDatum(TxUpdaterDatum { merkle_root: mk_root }),
+    datum: InlineDatum(TxsUpdaterDatum { merkle_root: mk_root }),
     reference_script: None,
   }
 }
@@ -32,9 +32,9 @@ fn burning_tx_set_updater_input() -> Input {
   Input {
     output_reference: test_constants.last_tx_set_updater_output_reference,
     output: burning_tx_updater_output(
-      env.txs_updater_asset_name,
+      env.burning_txs_updater_asset_name,
       1,
-      env.txs_updater_policy_id,
+      env.burning_txs_updater_policy_id,
       "old",
     ),
   }
@@ -47,12 +47,12 @@ fn locking_assets_input(amount_of_assets: Int) -> Input {
   }
 }
 
-fn redeemers_for_transaction(unlocked_amount: Int) {
+fn redeemers_for_transaction(unlocked_amount: Int) -> Pairs<ScriptPurpose, Data> {
   let unlocking_redeemer_data: Data =
     valid_unlocking_redeemer(
       test_constants.burning_transaction_id,
       unlocked_amount,
-      test_constants.chain_a_destination_address,
+      test_constants.chain_a_destination_address_vk,
     )
   let txs_updater_data: Data =
     simple_txs_updater_redeemer(test_constants.burning_transaction_id)
@@ -89,8 +89,8 @@ fn generate_unlocking_tx_without_change(
       Output {
         address: test_constants.chain_a_destination_address,
         value: build_value_with_native_token(
-          test_constants.bridge_locked_token_policy_id,
-          test_constants.bridge_locked_token_asset_name,
+          env.transferred_asset_policy_id,
+          env.transferred_asset_name,
           unlocked_amount,
         ),
         datum: NoDatum,
@@ -115,16 +115,16 @@ fn generate_unlocking_tx_with_change(
     ],
     outputs: [
       burning_tx_updater_output(
-        env.txs_updater_asset_name,
+        env.burning_txs_updater_asset_name,
         1,
-        env.txs_updater_policy_id,
+        env.burning_txs_updater_policy_id,
         "new",
       ),
       Output {
         address: test_constants.chain_a_destination_address,
         value: build_value_with_native_token(
-          test_constants.bridge_locked_token_policy_id,
-          test_constants.bridge_locked_token_asset_name,
+          env.transferred_asset_policy_id,
+          env.transferred_asset_name,
           unlocked_amount,
         ),
         datum: NoDatum,
@@ -133,8 +133,8 @@ fn generate_unlocking_tx_with_change(
       Output {
         address: change_output_address,
         value: build_value_with_native_token(
-          test_constants.bridge_locked_token_policy_id,
-          test_constants.bridge_locked_token_asset_name,
+          env.transferred_asset_policy_id,
+          env.transferred_asset_name,
           change_amount,
         ),
         datum: NoDatum,
@@ -148,8 +148,8 @@ fn generate_unlocking_tx_with_change(
 pub fn simple_unlocking_tx() -> Transaction {
   generate_unlocking_tx_without_change(
     locked_amount: 3,
-    txs_updater_asset_name: env.txs_updater_asset_name,
-    txs_updater_policy_id: env.txs_updater_policy_id,
+    txs_updater_asset_name: env.burning_txs_updater_asset_name,
+    txs_updater_policy_id: env.burning_txs_updater_policy_id,
     txs_updater_amount: 1,
     unlocked_amount: 3,
   )
@@ -159,7 +159,7 @@ pub fn unlocking_tx_with_output_with_incorrect_txs_updater_asset_name() -> Trans
   generate_unlocking_tx_without_change(
     locked_amount: 3,
     txs_updater_asset_name: "incorrect_txs_updater_asset_name",
-    txs_updater_policy_id: env.txs_updater_policy_id,
+    txs_updater_policy_id: env.burning_txs_updater_policy_id,
     txs_updater_amount: 1,
     unlocked_amount: 3,
   )
@@ -168,7 +168,7 @@ pub fn unlocking_tx_with_output_with_incorrect_txs_updater_asset_name() -> Trans
 pub fn unlocking_tx_with_incorrect_txs_updater_policy_id_output() -> Transaction {
   generate_unlocking_tx_without_change(
     locked_amount: 3,
-    txs_updater_asset_name: env.txs_updater_asset_name,
+    txs_updater_asset_name: env.burning_txs_updater_asset_name,
     txs_updater_policy_id: "incorrect_txs_updater_policy_id",
     txs_updater_amount: 1,
     unlocked_amount: 3,
@@ -178,8 +178,8 @@ pub fn unlocking_tx_with_incorrect_txs_updater_policy_id_output() -> Transaction
 pub fn unlocking_tx_with_incorrect_txs_updater_nft_amount() -> Transaction {
   generate_unlocking_tx_without_change(
     locked_amount: 3,
-    txs_updater_asset_name: env.txs_updater_asset_name,
-    txs_updater_policy_id: env.txs_updater_policy_id,
+    txs_updater_asset_name: env.burning_txs_updater_asset_name,
+    txs_updater_policy_id: env.burning_txs_updater_policy_id,
     txs_updater_amount: 2,
     unlocked_amount: 3,
   )
@@ -188,8 +188,8 @@ pub fn unlocking_tx_with_incorrect_txs_updater_nft_amount() -> Transaction {
 pub fn unlocking_tx_with_bigger_amount() -> Transaction {
   generate_unlocking_tx_without_change(
     locked_amount: 3,
-    txs_updater_asset_name: env.txs_updater_asset_name,
-    txs_updater_policy_id: env.txs_updater_policy_id,
+    txs_updater_asset_name: env.burning_txs_updater_asset_name,
+    txs_updater_policy_id: env.burning_txs_updater_policy_id,
     txs_updater_amount: 1,
     unlocked_amount: 4,
   )
@@ -201,16 +201,16 @@ pub fn unlocking_tx_without_burning_transactions_set() -> Transaction {
     inputs: [locking_assets_input(amount_of_assets: 1)],
     outputs: [
       burning_tx_updater_output(
-        env.txs_updater_asset_name,
+        env.burning_txs_updater_asset_name,
         3,
-        env.txs_updater_policy_id,
+        env.burning_txs_updater_policy_id,
         "new",
       ),
       Output {
         address: test_constants.chain_a_destination_address,
         value: build_value_with_native_token(
-          test_constants.bridge_locked_token_policy_id,
-          test_constants.bridge_locked_token_asset_name,
+          env.transferred_asset_policy_id,
+          env.transferred_asset_name,
           1,
         ),
         datum: NoDatum,
@@ -260,7 +260,7 @@ pub fn unlocking_tx_with_input_redeemers_with_different_tx_id() -> Transaction {
       valid_unlocking_redeemer(
         "some_transaction_id",
         unlocked_amount,
-        test_constants.chain_a_destination_address,
+        test_constants.chain_a_destination_address_vk,
       )
     let txs_updater_data: Data =
       simple_txs_updater_redeemer("another_transaction_id")
@@ -284,16 +284,16 @@ pub fn unlocking_tx_with_input_redeemers_with_different_tx_id() -> Transaction {
     ],
     outputs: [
       burning_tx_updater_output(
-        env.txs_updater_asset_name,
+        env.burning_txs_updater_asset_name,
         1,
-        env.txs_updater_policy_id,
+        env.burning_txs_updater_policy_id,
         "new",
       ),
       Output {
         address: test_constants.chain_a_destination_address,
         value: build_value_with_native_token(
-          test_constants.bridge_locked_token_policy_id,
-          test_constants.bridge_locked_token_asset_name,
+          env.transferred_asset_policy_id,
+          env.transferred_asset_name,
           unlocked_amount,
         ),
         datum: NoDatum,

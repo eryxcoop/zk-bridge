@@ -1,29 +1,25 @@
 use ak_381/groth16.{Proof}
 use cardano/transaction.{TransactionId}
-use common_types.{TxsUpdaterValidatorRedeemer, ZK}
+use common_types.{TxsUpdaterValidatorRedeemer}
 use tests/helpers/test_constants
 
 pub fn simple_txs_updater_redeemer(
-  burning_tx_id: TransactionId,
-) -> ZK<TxsUpdaterValidatorRedeemer> {
-  ZK {
-    redeemer: TxsUpdaterValidatorRedeemer {
-      tx_id: burning_tx_id,
-      locked_assets_utxo_ref: test_constants.locked_assets_utxo_ref,
-    },
-    proofs: [a_valid_tx_updater_proof()],
+  tx_id: TransactionId,
+) -> TxsUpdaterValidatorRedeemer {
+  TxsUpdaterValidatorRedeemer {
+    tx_id: tx_id,
+    locked_assets_utxo_ref: test_constants.locked_assets_utxo_ref,
+    tx_set_update_proof: a_valid_tx_updater_proof(),
   }
 }
 
 pub fn txs_updater_redeemer_with_invalid_proof(
   burning_tx_id: TransactionId,
-) -> ZK<TxsUpdaterValidatorRedeemer> {
-  ZK {
-    redeemer: TxsUpdaterValidatorRedeemer {
-      tx_id: burning_tx_id,
-      locked_assets_utxo_ref: test_constants.locked_assets_utxo_ref,
-    },
-    proofs: [an_invalid_tx_updater_proof()],
+) -> TxsUpdaterValidatorRedeemer {
+  TxsUpdaterValidatorRedeemer {
+    tx_id: burning_tx_id,
+    locked_assets_utxo_ref: test_constants.locked_assets_utxo_ref,
+    tx_set_update_proof: an_invalid_tx_updater_proof(),
   }
 }
 
