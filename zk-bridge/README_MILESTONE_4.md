@@ -40,7 +40,7 @@ In each other stake distribution transaction, we must process a new `MithrilStak
 
 ## Validators
 
-### Minting validator
+### Minting validator (`validators/minting.ak`)
 
 The minting validator must verify the following points:
 
@@ -57,7 +57,7 @@ The second point is validated in the functions `verify_mithril_standard_certific
 
 Once we are certain that the hash of the locking transaction is in the Merkle tree of the certificate, we need to ensure that the transaction with that hash really has the amount of tokens being minted and that the destination address is the one receiving those tokens (points 3 and 4). We do this in the function `locking_tx_hash_is_correct`. There, we reconstruct the locking transaction from the redeemer data, which includes the tokens to be minted and the destination address, and recompute its hash to verify that it matches the expected value.
 
-### Transactions Updater validator
+### Transactions Updater validator (`validators/tx_updater_minting.ak`)
 
 As we said, this validator was used in the unlocking transaction from the previous milestone. However, there are minimal modifications we had to make for the validator to be adapted to the minting transaction. Most of the code is equal, but the differences make that we separate it into two new validators. This is reasonable, since they are validators that live in different chains: `txs_updater_minting` lives in the destination chain, while `txs_updater_unlocking` lives in the source chain.
 
@@ -65,7 +65,7 @@ In the last milestone transaction updater validator, we had to verify that there
 
 In this milestone we need to do something similar. Since this is a minting transaction, we won't be looking for any input. We need to check that the transaction is minting tokens for the minting script. This means that we will be using a different `tx_id_in_both_redeemers_are_equal` function, which will check that another redeemer in the transaction has a minting `ScriptPurpose` for the minting script's `PolicyId`. We also check that we are effectively minting a positive amount of tokens.
 
-### Stake distribution validator
+### Stake distribution validator (`validators/stake_distribution.ak`)
 
 We will consider both instances of the stake distribution validator: the minting script for generating the first stake distribution certificate NFT asset (for the genesis certificate), and the spending script for updating the NFT asset with a new `MithrilStakeDistribution` certificate.
 
@@ -210,3 +210,48 @@ To run the tests, just [install Aiken](https://aiken-lang.org/installation-instr
 cd zk-bridge
 aiken check
 ```
+
+The new tests are:
+
+### validators/tests/tx_updater_test.ak
+
+ - `txs_updater_for_minting_tx`
+ - `txs_updater_for_minting_tx_must_be_minting_transferred_tokens`
+
+### validators/tests/minting_test
+ - `minting_validator_test`
+ - `minting_validator_test_with_many_inputs`
+ - `minting_validator_test_with_many_outputs`
+ - `minting_validator_test_with_many_reference_inputs`
+ - `minting_validator_invalid_mithril_proof_test`
+ - `minting_validator_invalid_merkle_proof_test`
+ - `minting_validator_test_incorrect_locking_tx_hash`
+ - `minting_validator_checks_that_one_input_has_tx_updater_nft`
+
+ ### validators/tests/hash_certificate.ak
+ - `sha2_256_test`
+ - `sha3_256_test`
+ - `hash_certificate_test`
+ - `hash_genesis_certificate_test`
+ - `hash_real_genesis_certificate_test`
+ - `hash_real_sd_certificate_test`
+ - `hash_real_cardano_transactions_certificate_test`
+ - `hash_parent_of_real_cardano_transactions_certificate_test`
+ - `hash_certificate_metadata_test`
+ - `hash_protocol_parameters_test`
+ - `hash_protocol_message_test`
+ - `hash_protocol_message_2_test`
+
+ ### validators/tests/stake_distribution_test.ak
+ - `stake_distribution_validator_genesis_certificate_test
+ - `stake_distribution_validator_genesis_certificate_without_parent_certificate_test
+ - `stake_distribution_validator_genesis_certificate_with_a_different_utxo_test
+ - `stake_distribution_validator_sd_certificate_test
+ - `stake_distribution_validator_invalid_mithril_proof_test
+ - `stake_distribution_validator_sd_certificate_must_have_parent_certificate_test
+ - `stake_distribution_validator_new_certificate_must_have_same_spending_script_test
+ - `stake_distribution_validator_incorrect_parent_certificate_hash_test
+ - `stake_distribution_validator_sd_certificate_has_not_one_epoch_more_than_parent_certificate_test
+ - `stake_distribution_validator_sd_certificate_with_incorrect_aggregate_verification_key_test
+ - `stake_distribution_validator_sd_certificate_with_incorrect_protocol_parameters_test
+ - `stake_distribution_validator_with_incorrect_signed_entity_type_test
