@@ -20,50 +20,49 @@ Since the scope of the project does not include choosing a destination chain for
 
 In order to mint tokens on the destination chain of the bridge, we need to:
 
- 1. Present a locking transaction along with a proof that it is valid on the source chain.
+ 1. Present a locking transaction along with proof that it is valid and that it actually exists in the source chain.
  2. Verify that tokens have not already been minted in the destination chain using the same locking transaction.
- 3. Present a ZK proof that the locking transaction actually existed.
 
 For step 2, we reused code from the previous milestone validator: `tx_updater`. Recall that in the unlocking validator of milestone 3 we also needed to verify that the presented burning transaction had not been used previously. We had to make some changes to that validator in order to make it work for the minting transaction, this can be seen in the `Transactions Updater validator` section of this document.
 
-Step 3 is the most difficult challenge of the bridge, and it is where we decided to leverage Mithril to solve the challenge of proving the inclusion of a transaction in Cardano. Throughout [the document delivered in milestone 2 of our project](https://github.com/eryxcoop/zk-bridge/blob/main/milestone_2_deliverables/zk_bridge.pdf) (particularly in sections 6.2 and 7.2), we explain how the stake distribution and minting validators achieve this.
+Presenting proof that a certain tx exists in another chain is the most difficult challenge of the bridge, and it is where we decided to leverage Mithril to solve the challenge of proving the inclusion of a transaction in Cardano. Throughout [the document delivered in milestone 2 of our project](https://github.com/eryxcoop/zk-bridge/blob/main/milestone_2_deliverables/zk_bridge.pdf) (particularly in sections 6.2 and 7.2), we explain how the stake distribution and minting validators achieve this.
 
-In summary, the stake distribution validator is used to maintain a UTXO that contains Cardano’s stake distribution. This UTXO will be used as a reference input in the minting validator, where we also receive a certificate proving that a locking transaction was executed on the sender chain, along with a proof that the certificate is valid for the provided stake distribution.
+In summary, the stake distribution validator is used to maintain an oracle to Cardano’s stake distribution, that can be updated only by presenting a correct state transition proof. This oracle will be used as a reference input in the minting validator, where we also receive a certificate proving that a locking transaction was executed on the sender chain, along with a proof that the certificate is valid for the provided stake distribution.
 
 ### Stake distribution transaction (`stake_distribution_tx`)
 
-This transaction is executed in the destination chain of the bridge. Its purpose is to add a new Mithril certificate for our chain directly from Mithril's certificate chain. Specifically, this certificate must sign an entity type of `MithrilStakeDistribution`, which corresponds to the first Mithril certficate signed for a given epoch. Refer to [Certificate chain design](https://mithril.network/doc/mithril/advanced/mithril-protocol/certificates/) for more details about Mithril's certificate chain, which is what we are replicating in this process.
+This transaction is executed in the destination chain of the bridge. Its purpose is to upload a new Mithril certificate to our chain directly from Mithril's certificate chain. Specifically, this certificate must sign a `MithrilStakeDistribution` instance, which corresponds to the first Mithril certficate signed for a given epoch. Refer to [Certificate chain design](https://mithril.network/doc/mithril/advanced/mithril-protocol/certificates/) for more details about Mithril's certificate chain, which we are replicating in this process.
 
-We will have exactly one NFT asset representing the stake distribution. Since the first certificate processed by the validator is a genesis certificate (as well as in Mithril's certificate chain), there will be a special `stake_distribution_tx` for the first time, which mints an NFT asset given a `MithrilStakeDistribution` genesis certificate, using a minting validator. This NFT asset will be in the same UTxO as the genesis certificate (Mithril certificates are in the datum of each UTxO).
+We will have a particular NFT asset representing the stake distribution. The first certificate processed by the validator is a genesis certificate (as well as in Mithril's certificate chain), so, the first time a stake distribution is uploaded, a special `stake_distribution_tx` will be executed. This action uses a minting validator to mint an NFT asset given a `MithrilStakeDistribution` genesis certificate. The resulting UTxO will contain this NFT in its value along with the Mithril certificate in its datum.
 
-In each other stake distribution transaction, we must process a new `MithrilStakeDistribution` certificate `C` (which will be passed in the redeemer), as we spend an UTxO containing the parent certificate of `C`. The new UTxO generated must recieve the NFT asset representinf the stake distribution. For doing this, the redeemer for this transaction must have a Groth16 Proof for verifying `C`'s multisignature.
+In the following stake distribution transactions, a new `MithrilStakeDistribution` certificate `C`, provided in the redeemer, will be processed, as the UTxO that contains the parent certificate of `C` will be spent. The new UTxO generated must recieve the NFT asset that represents the stake distribution. To do this, this transactions's redeemer must also have a Groth16 Proof to verify `C`'s multisignature.
 
 ## Validators
 
 ### Minting validator (`validators/minting.ak`)
 
-The minting validator must verify the following points:
+The validator that mints the wrapped assets must verify the following properties:
 
- 1. The presented locking transaction has not been used previously.
+ 1. The presented locking transaction has not already been used to mint, and nobody will be able to do so after this transaction.
  2. The locking transaction belongs to the source chain.
  3. The amount of tokens to be minted is the same as the amount locked in the locking transaction.
  4. The destination address of the locking transaction is the one receiving the funds in the minting transaction.
 
-The first point is verified in the auxiliary function `locking_tx_hash_is_added_to_the_used_txs_set`. This function verifies that the minting transaction contains an input with the tx_updater NFT. This is done similarly to milestone 3 for the unlocking transaction; by verifying that the transaction contains an input with that NFT, we ensure that the used tx set is being updated in the transaction. Note that it is not necessary to verify that an output with the NFT exists, since we know that if the input has the NFT, it will have the tx_updater validator as a script, which requires that the output exists to spend it.
+The first point is verified in the auxiliary function `locking_tx_hash_is_added_to_the_used_txs_set`. This function verifies that the minting transaction contains an input with the tx_updater NFT. This is done similarly to milestone 3 for the unlocking transaction; by verifying that the transaction contains an input with that NFT, we ensure that the used tx set is being updated in the transaction. Note that it is not necessary to verify that an output with the NFT exists, since we know that if an input has the NFT, it will have the tx_updater validator as a script, which requires that such an output exists to allow spending it.
 
 Additionally, we validate that the used tx set was updated with the hash presented in the redeemer of the minting transaction, which is the one appearing in the Mithril certificates. This is important because otherwise, someone could update the used tx set with a hash that is not from the locking transaction, allowing the locking transaction to be reused to mint tokens in the bridge, thus generating a double spend.
 
-The second point is validated in the functions `verify_mithril_standard_certificate` and `verify_transaction_is_present_in_snapshot`. In these functions, we verify that the Mithril transaction snapshot certificate is valid (this uses a Mithril stake distribution certificate received as a reference input) and that the hash of the locking transaction is in the Merkle tree contained in that certificate. In this milestone we will use empty circuits to act as placeholders. We will write the real circuits in the next milestone.
+The second point is validated in the functions `verify_mithril_standard_certificate` and `verify_transaction_is_present_in_snapshot`. In these functions, we verify that the Mithril transaction snapshot certificate is valid (this uses a Mithril stake distribution certificate received as a reference input) and that the hash of the locking transaction is in the Merkle tree contained in that certificate. In this milestone we will use empty circuits to act as placeholders because we will write the real circuits in the next milestone.
 
 Once we are certain that the hash of the locking transaction is in the Merkle tree of the certificate, we need to ensure that the transaction with that hash really has the amount of tokens being minted and that the destination address is the one receiving those tokens (points 3 and 4). We do this in the function `locking_tx_hash_is_correct`. There, we reconstruct the locking transaction from the redeemer data, which includes the tokens to be minted and the destination address, and recompute its hash to verify that it matches the expected value.
 
 ### Transactions Updater validator (`validators/tx_updater_minting.ak`)
 
-As we said, this validator was used in the unlocking transaction from the previous milestone. However, there are minimal modifications we had to make for the validator to be adapted to the minting transaction. Most of the code is equal, but the differences make that we separate it into two new validators. This is reasonable, since they are validators that live in different chains: `txs_updater_minting` lives in the destination chain, while `txs_updater_unlocking` lives in the source chain.
+As we said, this validator was used in the unlocking transaction from the previous milestone. However, there are minimal modifications we had to make for the validator to be adapted to the minting transaction. Most of the code is the same, but the differences made us separate it into two new validators. This is reasonable, since they live in different chains: `txs_updater_minting` lives in the destination chain, while `txs_updater_unlocking` lives in the source chain.
 
-In the last milestone transaction updater validator, we had to verify that there is was other input with the unlocking script as it's address. This was to ensure that the burning transaction hash used to update de used transactions set was also used to unlock funds from the bridge. If we didn't do this validation, someone could use a burning transaction hash to update the transactions set and those tokens would be locked forever.
+In the last milestone's transaction updater validator, we needed to verify that there was an input, belonging to the unlocking script, that was being consumed to ensure that the corresponding funds were being unlocked. If we didn't, someone could attack the used transactions set by asking to add certain txids to it without actually unlocking anything, thus banning those potentially many transactions from ever unlocking funds.
 
-In this milestone we need to do something similar. Since this is a minting transaction, we won't be looking for any input. We need to check that the transaction is minting tokens for the minting script. This means that we will be using a different `tx_id_in_both_redeemers_are_equal` function, which will check that another redeemer in the transaction has a minting `ScriptPurpose` for the minting script's `PolicyId`. We also check that we are effectively minting a positive amount of tokens.
+In this milestone we need to do something similar. Since this is a minting transaction, we won't be looking for any inputs. We need to check instead that the transaction that updates the used transactions set is actually minting tokens, to ensure that the minting validator is applied. This means that we will be using a different `tx_id_in_both_redeemers_are_equal` function, which will check that another redeemer in the transaction has a minting `ScriptPurpose` for the minting script's `PolicyId`. We also check that we are effectively minting a positive amount of tokens.
 
 ### Stake distribution validator (`validators/stake_distribution.ak`)
 
@@ -80,12 +79,11 @@ The minting script validates that:
 
 The minting script can be instantiated for a specific UTxO which modifies the `policy_id` of the stake distribution certificate NFT asset. This implies unforgeability of an asset with the same `policy_id`, starting from a different valid genesis certificate. Mithril's generate vertification key is hardcoded in the validator.
 
-The spending script spends an UTxO `O1` validates that:
+The spending script spends an UTxO `O1` and validates that:
 
-- `O1` contains a Mithril certificate in its datum, which will be the parent certificate of `C` in the ideal case.
-- `C` is effectively a `MithrilStakeDistribution` certificate.
+- `O1` contains a Mithril certificate in its datum, which is expected to be the parent certificate of `C`.
 - The stake distribution transaction generates an UTxO `O2` that contains `C` in its datum.
-- `C` is a valid Mithril certificate. This implies verifying its multisignature using `P`. For this milestone, every certificate verification step is implemented except for the signature verifications, and `P` is a mock proof.
+- `C` is a `MithrilStakeDistribution` certificate and it is valid. This implies verifying its multisignature using `P`. For this milestone, every certificate verification step is implemented except for the signature verifications, and `P` is a mock proof.
 - `O1` and `O2` have the same spending script. This means that `O2` will be only possible to spend in this spending script.
 - The stake distribution transaction moves `O1`'s stake distribution certificate NFT asset to `O2`.
 
