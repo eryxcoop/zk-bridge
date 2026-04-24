@@ -1,0 +1,21 @@
+ak-381/
+.omx/
+circuit_transaction_snapshot/target/
+circuit_transaction_snapshot/groth16_artifacts/
+circuit_transaction_snapshot/.cache/
+circuit_inclusion_exclusion/target/
+circuit_inclusion_exclusion/groth16_artifacts/
+circuit_inclusion_exclusion/.cache/
+circuit_inclusion_exclusion/*.r1cs
+zk-bridge-operator/target/
+zk-circuits-common/operator/target/
+zk-circuits-common/operator/certificates/*
+zk-circuits-common/operator/tx_artifacts/*
+
+# Cargo locks
+**/Cargo.lock
+!circuit_inclusion_exclusion/Cargo.lock
+!circuit_transaction_snapshot/Cargo.lock
+
+# Aiken locks
+**/aiken.lock

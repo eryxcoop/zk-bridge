@@ -1,0 +1,57 @@
+{
+  "kind": "origin_chain_bridge_candidate",
+  "status": "example_only",
+  "notes": [
+    "This example is built from a real preview origin-chain transaction.",
+    "The origin-side observable fields were reconstructed from the public transaction record.",
+    "The bridge-specific fields are intentionally pinned to the current destination-chain bridge constants from bridge-aiken.",
+    "Because the current bridge locking hash is a custom SHA-256 over bridge-shaped fields, the derived locking_tx_hash does not equal the real Cardano tx hash for this candidate."
+  ],
+  "provenance": {
+    "network": "preview",
+    "cardanoscan_transaction_url": "https://preview.cardanoscan.io/transaction/601c6513db4646317449e575104044e53f9e7db721fa7424782a83889961b6be",
+    "cardanoscan_discovery_url": "https://preview.cardanoscan.io/token/c450b3e21b1e98bb559bfbaf3b9fd9df60d7df9e0ce62cedd56912ea000643b04045434f4c49",
+    "origin_tx_hash": "601c6513db4646317449e575104044e53f9e7db721fa7424782a83889961b6be",
+    "block_height": 2268463,
+    "epoch_no": 622,
+    "epoch_slot": 68376,
+    "tx_timestamp_unix": 1720465176
+  },
+  "origin_selection": {
+    "reason": "Simple public-key input and public-key output with no selected datum on either leg, fully derivable from the public tx record.",
+    "selected_input": {
+      "tx_hash": "0cab0a31cce308ad460c7b0dd71dd4017152f0ff2b0d196f4bc2d5d8c8cbee55",
+      "tx_index": 0,
+      "payment_credential_hex": "389030869862f76e7986c5bda7cb35608536c9433686751eb409b1bd",
+      "address_bech32": "addr_test1qqufqvyxnp30wmnesmzmmf7tx4sg2dkfgvmgvag7ksymr0d7zp7yjk02aynt3k26slrpg4zengp5yvy84zqz330paaxstvsd0h",
+      "datum_kind": "none"
+    },
+    "selected_output": {
+      "tx_index": 4,
+      "payment_credential_hex": "389030869862f76e7986c5bda7cb35608536c9433686751eb409b1bd",
+      "address_bech32": "addr_test1qqufqvyxnp30wmnesmzmmf7tx4sg2dkfgvmgvag7ksymr0d7zp7yjk02aynt3k26slrpg4zengp5yvy84zqz330paaxstvsd0h",
+      "lovelace": 9986043924,
+      "datum_kind": "none"
+    }
+  },
+  "bridge_fields": {
+    "bridge_policy_id": "9cfe5407375903c8b063f255859299aa499bfe674bea18b5f4353f0f",
+    "transferred_asset_name": "token_asset_name",
+    "asset_amount": 1,
+    "asset_amount_source": "assumed_for_example",
+    "input_datum_hex": ""
+  },
+  "bridge_candidate_inputs": {
+    "locking_tx_input_output_reference_tx_id": "0cab0a31cce308ad460c7b0dd71dd4017152f0ff2b0d196f4bc2d5d8c8cbee55",
+    "locking_tx_input_output_reference_output_index": 0,
+    "locking_tx_input_payment_credential": "389030869862f76e7986c5bda7cb35608536c9433686751eb409b1bd",
+    "locking_tx_input_datum_hex": "",
+    "locking_tx_destination_payment_credential": "389030869862f76e7986c5bda7cb35608536c9433686751eb409b1bd",
+    "locking_tx_asset_amount": 1,
+    "locking_tx_ada_amount": 9986043924
+  },
+  "derived": {
+    "locking_tx_hash_hex": "1f740fa2396634db3696ecbc6275abb809d6a4987dcfa15179ab9a876c4e1c97",
+    "matches_origin_tx_hash": false
+  }
+}
