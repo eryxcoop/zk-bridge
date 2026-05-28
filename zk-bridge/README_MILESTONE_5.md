@@ -54,19 +54,19 @@ root.
 
 To have a better understanding of the circuit, see:
 
-- [`How the Mithril Legacy Algorithm Works`](./circuit_transaction_snapshot/README.md#how-the-mithril-legacy-algorithm-works)
-- [`Compilation Settings`](./circuit_transaction_snapshot/README.md#compilation-settings)
-- [`Circuit Inputs`](./circuit_transaction_snapshot/README.md#circuit-inputs)
-- [`Circuit Outputs`](./circuit_transaction_snapshot/README.md#circuit-outputs)
-- [`Mithril API Response Format`](./circuit_transaction_snapshot/README.md#mithril-api-response-format)
-- [`Local Testing Flow`](./circuit_transaction_snapshot/README.md#local-testing-flow)
+- [`How the Mithril Legacy Algorithm Works`](../circuit_transaction_snapshot/README.md#how-the-mithril-legacy-algorithm-works)
+- [`Compilation Settings`](../circuit_transaction_snapshot/README.md#compilation-settings)
+- [`Circuit Inputs`](../circuit_transaction_snapshot/README.md#circuit-inputs)
+- [`Circuit Outputs`](../circuit_transaction_snapshot/README.md#circuit-outputs)
+- [`Mithril API Response Format`](../circuit_transaction_snapshot/README.md#mithril-api-response-format)
+- [`Local Testing Flow`](../circuit_transaction_snapshot/README.md#local-testing-flow)
 
 This directory also contains an experimental follow-up circuit for Mithril's upcoming
 single-level tree design:
 
-- [`Experimental Lagrange Circuit`](./circuit_transaction_snapshot/README.md#experimental-lagrange-circuit)
-- circuit file: `circuit_transaction_snapshot/mithril_lagrange_tx_membership_experimental.circom`
-- directory documentation: [`circuit_transaction_snapshot/README.md`](./circuit_transaction_snapshot/README.md)
+- [`Experimental Lagrange Circuit`](../circuit_transaction_snapshot/README.md#experimental-lagrange-circuit)
+- circuit file: [`circuit_transaction_snapshot/mithril_lagrange_tx_membership_experimental.circom`](../circuit_transaction_snapshot/mithril_lagrange_tx_membership_experimental.circom)
+- directory documentation: [`circuit_transaction_snapshot/README.md`](./../circuit_transaction_snapshot/README.md)
 
 ### Blake2s circuit
 
@@ -97,10 +97,10 @@ specifically in the `TxSetUpdate` component.
 
 For the exact current statement of this circuit, see:
 
-- [`Current Status`](./circuit_inclusion_exclusion/README.md#current-status)
-- [`SMT Model`](./circuit_inclusion_exclusion/README.md#smt-model)
-- [`Local Flow`](./circuit_inclusion_exclusion/README.md#local-flow)
-- [`Shared Operator`](./circuit_inclusion_exclusion/README.md#shared-operator)
+- [`Current Status`](../circuit_inclusion_exclusion/README.md#current-status)
+- [`SMT Model`](../circuit_inclusion_exclusion/README.md#smt-model)
+- [`Local Flow`](../circuit_inclusion_exclusion/README.md#local-flow)
+- [`Shared Operator`](../circuit_inclusion_exclusion/README.md#shared-operator)
 
 
 ## Testing of transaction set update and transaction inclusion in Mithril snapshot
@@ -149,7 +149,7 @@ Its two main commands are:
 
 For the operator contract and generated artifacts, see:
 
-- [`zk-bridge-operator/README.md`](./zk-bridge-operator/README.md)
+- [`zk-bridge-operator/README.md`](../zk-bridge-operator/README.md)
 
 # End-to-end test flows
 
