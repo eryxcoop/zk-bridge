@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+// Vendored from https://github.com/bkomuves/hash-circuits
+// Copyright (c) 2023-2025 Faulhorn Zrt.
+// Full license text: vendor/LICENSE-blake2-MIT
 
 pragma circom 2.0.0;
 

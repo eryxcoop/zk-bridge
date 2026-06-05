@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+// Vendored from https://github.com/jmagan/poseidon-bls12381-circom
+// Copyright (c) 2024 Juan Salvador Magán Valero
+// Full license text: vendor/LICENSE-poseidon255-MIT
 
 pragma circom 2.0.0;
 
