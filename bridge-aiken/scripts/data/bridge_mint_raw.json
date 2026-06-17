@@ -1,0 +1,45 @@
+{
+  "bridge_asset_amount": 1,
+  "bridge_output_lovelace": 3000000,
+  "locking_txs_updater_output_lovelace": 3000000,
+  "new_merkle_root_hex": "5cb3f84e41f5ea511f7b59cf8ea373ab2ab73d3f0ce0caffff65d3ce3128254a",
+  "bridge_mint_dummy_redeemer": "0x00",
+  "bridge_txs_updater_dummy_redeemer": "0x00",
+  "locking_tx_input_output_reference_tx_id_text": "source_chain_input_tx",
+  "locking_tx_input_output_reference_output_index": 0,
+  "locking_tx_input_payment_credential_text": "my_verification_key_in_chain_A",
+  "locking_tx_input_datum_hex": "",
+  "actual_locking_tx_destination_payment_credential_hex": "0dd172b9b1866fd9513b96fcbe378a2d5adc7fb499949e8865d53edf",
+  "locking_tx_ada_amount": 0,
+  "locking_tx_hash_hex": "3c8083c0953d51e7d6addb2209c6181bd6723ae659ca93c3902cc0e576960bab",
+  "child_certificate_hash_text": "locking_tx_certificate_hash",
+  "child_certificate_next_aggregate_verification_key_text": "next-aggregate-verification-key-1151",
+  "child_certificate_next_aggregate_verification_key_snark_text": "snark-avk-1151",
+  "tx_snapshot_certificate_protocol_message_cardano_transactions_merkle_root_text": "da7abe67b81d8fe9f7896670a12cd469397d8e7a8b9a61a47abd8af373aeb213",
+  "locking_tx_merkle_proof_public_sub_root_hex": "993257634214571b83085dffb96c761be36e5ec84c5dbb11fff79b100e48710b",
+  "packed_public_inputs": {
+    "cardano_tx_hash_hi": "80420965998640089144987844519462836251",
+    "cardano_tx_hash_lo": "285047907569868423913788255890419616683",
+    "sub_root_hi": "203633270631693077061194376951379031579",
+    "sub_root_lo": "302307830113384154560407639935492321547",
+    "snapshot_root_hi": "290409025173159322320549618664172475497",
+    "snapshot_root_lo": "76417922678261655531579563310226256403"
+  },
+  "tx_set_update_packed_public_inputs": {
+    "tx_id_hi": "80420965998640089144987844519462836251",
+    "tx_id_lo": "285047907569868423913788255890419616683",
+    "mt_root_in": "7465160404945181250262177028688097836913452736141962048896281662993353781552",
+    "mt_root_out": "41930761437172145268222091419041856196859841653954223064919712472958746764618"
+  },
+  "tx_set_update_old_merkle_root_hex": "1081218ce61ee106396796dc2b469a63b99a934125107c4cc30050966f39b130",
+  "tx_set_update_proof": {
+    "piA": "961872fb8b8e41a9de6f60a1426c1ddc61453b3b0f457436bb206c47aebd0667cc908362490fd279d70fe1fe98cfe053",
+    "piB": "9555795b66d8af2b1b6e6cdffea54386d581bb881bf9c34549a146e31e5f1a95744bf1193f7e4ecb6aa0ca6675a82a4e039a1bca0f869505a7f37335381f89bcdc530732ae8b5dbe9c61f5e0845d2df0a3e86134a57c44a2e87a6784aec129f0",
+    "piC": "b2c274635cdd95306a4bed0e94d7346773ddd0d7cbb67b425d46b8bd912727ab8c75b9e7c21dea4fe8048d5d9e349182"
+  },
+  "minting_merkle_proof": {
+    "piA": "82940ed112e80961b5afeb62e0f686ac5754134e46eeb43e8410f4674e7228ce6140689b1a1feecfef2ad60ad6a07e40",
+    "piB": "802b6935208d99148e902b8425c55dae04df57b309117db0da88e01f457942564b95115d97d6556c94082c1ee3f51401065e89ddda912c7c4e0d0a194bf6937338ab0fcc5f45ab65ee0d080c820a8396c76a407730823f63b08c5d17153f3433",
+    "piC": "903f9ba05be18798f278b2a74810716a84ac2497afcda44e26d19894ca8a8ace75916eaf31d24978007926143014f752"
+  }
+}

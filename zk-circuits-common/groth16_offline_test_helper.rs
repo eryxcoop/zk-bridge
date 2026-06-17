@@ -14,8 +14,8 @@ pub fn run_groth16_offline_fixture_test(
     expectation: OfflineFixtureExpectation<'_>,
 ) {
     let script_path = manifest_dir.join("scripts/run_e2e_test.sh");
-    let artifacts_dir = manifest_dir.join("groth16_artifacts");
-    let work_dir = artifacts_dir.join("test_runs").join(unique_suffix());
+    let circuit_build_dir = manifest_dir.join("circuit_build");
+    let work_dir = circuit_build_dir.join("test_runs").join(unique_suffix());
 
     let output = Command::new("bash")
         .arg(script_path)
@@ -40,7 +40,7 @@ pub fn run_groth16_offline_fixture_test(
         "proof.json",
         "public.json",
         "packed_public_inputs.json",
-        "fixture_summary.json",
+        "proof_summary.json",
         expectation.vk_filename,
     ] {
         assert_exists(&work_dir.join(filename));
@@ -60,7 +60,7 @@ pub fn run_groth16_offline_fixture_test(
         verify_log
     );
 
-    let summary = fs::read_to_string(work_dir.join("fixture_summary.json"))
+    let summary = fs::read_to_string(work_dir.join("proof_summary.json"))
         .expect("fixture summary should be written by the flow script");
     assert!(
         summary.contains(&format!("\"public_inputs\": {}", expectation.expected_public_inputs)),

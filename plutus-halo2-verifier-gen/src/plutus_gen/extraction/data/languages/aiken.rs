@@ -1,9 +1,14 @@
 //! All functions related to data's name and manipulation in Aiken language
 
-use super::super::{Commitments, Evaluations, ExpressionG1, ScalarExpression, constants::*};
+// CHANGED vs upstream: transpile the pipeline's own `CircuitExpression` instead
+// of halo2's `Expression` (the `use halo2_proofs::plonk::Expression` import was
+// dropped). Gate/lookup equations are now extracted from a Midnight relation, so
+// they no longer carry halo2 query objects — see `base_types/expression.rs`.
+use super::super::{
+    CircuitExpression, Commitments, Evaluations, ExpressionG1, ScalarExpression, constants::*,
+};
 
 use blstrs::Scalar;
-use halo2_proofs::plonk::Expression;
 
 use std::io::{BufWriter, Result, Write};
 
@@ -11,7 +16,11 @@ pub trait AikenExpression {
     fn compile_expression(&self) -> String;
 }
 
-pub(crate) fn combine_aiken_expressions(lookup_expressions: Vec<Expression<Scalar>>) -> String {
+// CHANGED vs upstream: takes `CircuitExpression<Scalar>` instead of halo2's
+// `Expression<Scalar>`.
+pub(crate) fn combine_aiken_expressions(
+    lookup_expressions: Vec<CircuitExpression<Scalar>>,
+) -> String {
     let compiled: Vec<_> = lookup_expressions
         .iter()
         .map(AikenExpression::compile_expression)
@@ -24,6 +33,10 @@ pub(crate) fn combine_aiken_expressions(lookup_expressions: Vec<Expression<Scala
 impl AikenExpression for Evaluations {
     fn compile_expression(&self) -> String {
         match self {
+            // CHANGED vs upstream: added for Midnight support (committed-instance evals).
+            Evaluations::CommittedInstance(index) => {
+                format!("instance_eval_{:?}", index)
+            }
             Evaluations::Advice(index) => {
                 format!("advice_eval_{:?}", index)
             }
@@ -49,6 +62,10 @@ impl AikenExpression for Evaluations {
             Evaluations::PermutationsCommon(index) => {
                 format!("permutation_common_{:?}", index)
             }
+            // CHANGED vs upstream: added for Midnight support (trash-column evals).
+            Evaluations::Trash(index) => {
+                format!("trash_eval_{:?}", index)
+            }
             Evaluations::VanishingS => "vanishing_s".to_string(),
             Evaluations::RandomEval => "random_eval".to_string(),
         }
@@ -58,6 +75,10 @@ impl AikenExpression for Evaluations {
 impl AikenExpression for Commitments {
     fn compile_expression(&self) -> String {
         match self {
+            // CHANGED vs upstream: added for Midnight support (committed-instance commitments).
+            Commitments::CommittedInstance(index) => {
+                format!("committed_instance_commitment_{:?}", index)
+            }
             Commitments::Advice(index) => {
                 format!("a{:?}", index)
             }
@@ -75,6 +96,10 @@ impl AikenExpression for Commitments {
             }
             Commitments::PermutedTable(index) => {
                 format!("permuted_table_{:?}", index)
+            }
+            // CHANGED vs upstream: added for Midnight support (trash-column commitments).
+            Commitments::Trash(index) => {
+                format!("trash_commitment_{:?}", index)
             }
             Commitments::PermutationsCommon(index) => {
                 format!("p{:?}_commitment", index)
@@ -100,55 +125,47 @@ impl<E: AikenTranspiler> AikenExpression for E {
     }
 }
 
-impl AikenTranspiler for Expression<Scalar> {
+// CHANGED vs upstream: implemented for the pipeline's `CircuitExpression<Scalar>`
+// instead of halo2's `Expression<Scalar>`. `Selector`/`Challenge` are now unit
+// variants, and `Fixed`/`Advice` carry their column index directly instead of a
+// halo2 query object (so there is no more `query.index()` unwrapping).
+impl AikenTranspiler for CircuitExpression<Scalar> {
     fn aiken_polynomial<W: Write>(&self, writer: &mut W) -> Result<()> {
         match self {
-            Expression::Constant(scalar) => {
+            CircuitExpression::Constant(scalar) => {
                 write!(writer, "from_int(0x{})", hex::encode(scalar.to_bytes_be()))
             }
-            Expression::Selector(_selector) => {
+            CircuitExpression::Selector => {
                 panic!("Selector not supported in custom gate")
             }
-            Expression::Fixed(query) => {
-                write!(
-                    writer,
-                    "fixed_eval_{}",
-                    query.index().expect("unable to get the index of the query") + 1
-                )
-            }
-            Expression::Advice(query) => {
-                write!(
-                    writer,
-                    "advice_eval_{}",
-                    query.index.expect("unable to get the index of the query") + 1
-                )
-            }
-            Expression::Instance(_query) => {
+            CircuitExpression::Fixed(index) => write!(writer, "fixed_eval_{index}"),
+            CircuitExpression::Advice(index) => write!(writer, "advice_eval_{index}"),
+            CircuitExpression::Instance(_index) => {
                 panic!("Instance not supported")
             }
-            Expression::Challenge(_challenge) => {
+            CircuitExpression::Challenge => {
                 panic!("Challenge not supported")
             }
-            Expression::Negated(a) => {
+            CircuitExpression::Negated(a) => {
                 writer.write_all(b" neg(")?;
                 a.aiken_polynomial(writer)?;
                 writer.write_all(b") ")
             }
-            Expression::Sum(a, b) => {
+            CircuitExpression::Sum(a, b) => {
                 writer.write_all(b"add(")?;
                 a.aiken_polynomial(writer)?;
                 writer.write_all(b", ")?;
                 b.aiken_polynomial(writer)?;
                 writer.write_all(b")")
             }
-            Expression::Product(a, b) => {
+            CircuitExpression::Product(a, b) => {
                 writer.write_all(b"mul(")?;
                 a.aiken_polynomial(writer)?;
                 writer.write_all(b", ")?;
                 b.aiken_polynomial(writer)?;
                 writer.write_all(b")")
             }
-            Expression::Scaled(a, f) => {
+            CircuitExpression::Scaled(a, f) => {
                 writer.write_all(b"mul(")?;
                 a.aiken_polynomial(writer)?;
                 write!(writer, ", {:?})", f)
@@ -159,8 +176,10 @@ impl AikenTranspiler for Expression<Scalar> {
 
 impl AikenTranspiler for ExpressionG1<Scalar> {
     fn aiken_polynomial<W: Write>(&self, writer: &mut W) -> Result<()> {
+        // CHANGED vs upstream: dropped the `ExpressionG1::Zero => " zero "` arm;
+        // the reworked vanishing expressions no longer emit a zero G1 seed term
+        // (see base_types/expression.rs and extraction_steps/vanishing.rs).
         match self {
-            ExpressionG1::Zero => writer.write_all(b" zero "),
             ExpressionG1::Sum(a, b) => {
                 writer.write_all(b"addG1(")?;
                 a.aiken_polynomial(writer)?;
@@ -188,8 +207,10 @@ impl AikenTranspiler for ExpressionG1<Scalar> {
 impl AikenTranspiler for ScalarExpression<Scalar> {
     fn aiken_polynomial<W: Write>(&self, writer: &mut W) -> Result<()> {
         match self {
+            // CHANGED vs upstream: prefix the hex literal with `0x` (was `from_int({})`),
+            // so the constant is parsed as hex rather than decimal by the generated Aiken.
             ScalarExpression::Constant(value) => {
-                write!(writer, "from_int({})", hex::encode(value.to_bytes_be()))
+                write!(writer, "from_int(0x{})", hex::encode(value.to_bytes_be()))
             }
             ScalarExpression::Variable(name) => {
                 write!(writer, " {} ", name)

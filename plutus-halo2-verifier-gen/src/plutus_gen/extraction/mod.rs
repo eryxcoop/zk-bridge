@@ -15,6 +15,7 @@ use log::info;
 
 pub(crate) mod data;
 pub use data::CircuitRepresentation;
+pub(crate) mod conversion;
 use data::{
     Commitments, Evaluations, RotationDescription,
     extraction_steps::{
@@ -22,6 +23,8 @@ use data::{
         vanishing_expressions,
     },
 };
+pub(crate) mod midnight;
+pub use midnight::{extract_circuit_from_midnight_vk, extract_circuit_midnight};
 
 pub(crate) mod pcs;
 pub use pcs::ExtractPCS;
@@ -116,14 +119,24 @@ where
         // Extracting compiled_gate_equations
         vk.cs().gates().iter().for_each(|gate| {
             gate.polynomials().iter().for_each(|poly| {
-                circuit_description.expressions.gate(poly.clone());
+                circuit_description.expressions.gate(poly.clone().into());
             })
         });
 
         // Extracting compiled_lookups_equations
         vk.cs().lookups().iter().for_each(|argument| {
-            let inputs = argument.input_expressions().to_vec();
-            let tables = argument.table_expressions().to_vec();
+            let inputs = argument
+                .input_expressions()
+                .iter()
+                .cloned()
+                .map(Into::into)
+                .collect();
+            let tables = argument
+                .table_expressions()
+                .iter()
+                .cloned()
+                .map(Into::into)
+                .collect();
             circuit_description.expressions.lookup(inputs, tables);
         });
 
@@ -133,7 +146,7 @@ where
         // Extracting permutation_terms_left and permutation_terms_right
         permutation_terms_both(
             &mut circuit_description,
-            &vk,
+            vk,
             chunk_len,
             &sets,
             nb_permutation_common,

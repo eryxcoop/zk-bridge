@@ -18,11 +18,11 @@ Estado operativo vigente de `circuit_inclusion_exclusion`.
 - `cargo test --test groth16_offline -- --nocapture` pasa en este directorio
 - `scripts/run_e2e_test.sh` pasa con `verified=true`
 - el fixture final canónico sigue en:
-  - `groth16_artifacts/final_fixture`
+  - `circuit_build/groth16_sample_proof`
 - el flujo local sigue siendo:
-  - `scripts/build_groth16_artifacts.sh`
+  - `scripts/build_circuit.sh`
   - `scripts/run_e2e_test.sh`
-- los `groth16_artifacts/test_runs/` históricos fueron podados; no deben
+- los `circuit_build/test_runs/` históricos fueron podados; no deben
   considerarse artifacts vigentes
 
 ## Contrato público actual
@@ -58,23 +58,23 @@ Ese operador genera dos pruebas para el mismo hash canónico:
 Cuando el operador compartido ejecuta `tx prove <tx>`, el bundle exportado por
 este crate queda en:
 
-- `tx_artifacts/<tx>/tx_set_update/input.json`
-- `tx_artifacts/<tx>/tx_set_update/proof.json`
-- `tx_artifacts/<tx>/tx_set_update/public.json`
-- `tx_artifacts/<tx>/tx_set_update/packed_public_inputs.json`
-- `tx_artifacts/<tx>/tx_set_update/verify.log`
-- `tx_artifacts/<tx>/tx_set_update/fixture_summary.json`
-- `tx_artifacts/<tx>/tx_set_update/tx_set_update_vk.ak`
+- `proven_transactions/<tx>/tx_set_update/input.json`
+- `proven_transactions/<tx>/tx_set_update/proof.json`
+- `proven_transactions/<tx>/tx_set_update/public.json`
+- `proven_transactions/<tx>/tx_set_update/packed_public_inputs.json`
+- `proven_transactions/<tx>/tx_set_update/verify.log`
+- `proven_transactions/<tx>/tx_set_update/proof_summary.json`
+- `proven_transactions/<tx>/tx_set_update/tx_set_update_vk.ak`
 
 Artefactos canónicos de lectura rápida:
 
 - `packed_public_inputs.json`
-- `fixture_summary.json`
+- `proof_summary.json`
 
 Validación real ya comprobada en esta sesión:
 
 - `zk-bridge-operator tx prove 601c6513db4646317449e575104044e53f9e7db721fa7424782a83889961b6be`
-- el bundle `tx_set_update/fixture_summary.json` resultante queda con
+- el bundle `tx_set_update/proof_summary.json` resultante queda con
   `verified=true`
 
 ## Próximos pasos

@@ -1,0 +1,322 @@
+use anyhow::{Context, anyhow};
+use ff::Field;
+use group::Group;
+use midnight_circuits::ecc::curves::CircuitCurve as CircuitCurveTrait;
+use midnight_circuits::instructions::{AssignmentInstructions, PublicInputInstructions};
+use midnight_circuits::types::{AssignedNative, AssignedNativePoint};
+use midnight_proofs::circuit::{Layouter, Value};
+use midnight_proofs::plonk::Error;
+use midnight_zk_stdlib::{Relation, ZkStdLib, ZkStdLibArch};
+
+use mithril_stm::{LotteryIndex, Parameters};
+
+use super::crypto::{DOMAIN_SEPARATION_TAG_LOTTERY, DOMAIN_SEPARATION_TAG_SIGNATURE};
+use super::errors::{StmCircuitError, to_synthesis_error};
+use super::gadgets::{
+    MerklePathInputs, UniqueSchnorrSignatureInputs, assert_lottery_index_in_bounds,
+    assert_lottery_won, assert_strictly_increasing_lottery_index, verify_merkle_path,
+    verify_unique_signature,
+};
+use super::StmResult;
+use super::types::{CircuitBase, CircuitCurve};
+use super::witness::{CircuitInstance, CircuitWitness};
+use super::witness_assignments::{assign_signature_components, assign_witness_entry};
+
+/// Halo2 relation implementing the non-recursive STM verification circuit.
+#[derive(Clone, Default, Debug)]
+pub struct StmCircuit {
+    // k in mithril: the required number of distinct lottery index slots needed to create a valid multi-signature
+    k: u32,
+    // m in mithril: the number of lotteries that a signer can participate in for a message
+    m: u32,
+    merkle_tree_depth: u32,
+}
+
+impl StmCircuit {
+    fn checked_len_u32(actual: usize) -> u32 {
+        u32::try_from(actual).unwrap_or(u32::MAX)
+    }
+
+    /// Returns the configured Merkle tree depth used to size witness path assignments.
+    pub(crate) fn merkle_tree_depth(&self) -> u32 {
+        self.merkle_tree_depth
+    }
+
+    /// Validates global circuit parameters before synthesis.
+    ///
+    /// Enforces `k < m` returning
+    /// `StmCircuitError::InvalidCircuitParameters` when violated.
+    pub(crate) fn validate_parameters(&self) -> StmResult<()> {
+        if self.k >= self.m {
+            return Err(anyhow!(StmCircuitError::InvalidCircuitParameters {
+                k: self.k,
+                m: self.m,
+            }));
+        }
+
+        Ok(())
+    }
+
+    /// Validates that witness vector length matches the configured k.
+    ///
+    /// This precondition prevents shape mismatches; failures return
+    /// `StmCircuitError::WitnessLengthMismatch`.
+    pub(crate) fn validate_witness_length(&self, actual: usize) -> StmResult<()> {
+        let expected_k = self.k as usize;
+        if actual != expected_k {
+            return Err(anyhow!(StmCircuitError::WitnessLengthMismatch {
+                expected_k: self.k,
+                actual: Self::checked_len_u32(actual),
+            }));
+        }
+
+        Ok(())
+    }
+
+    /// Validates witness lottery indices against circuit constraints.
+    ///
+    /// The circuit uses 32-bit comparison constraints (`lower_than(..., 32)`), so each
+    /// index must fit in `u32` and must satisfy `index < m`.
+    pub(crate) fn validate_lottery_index(&self, index: LotteryIndex) -> StmResult<()> {
+        let max_supported = u32::MAX as LotteryIndex;
+        if index > max_supported {
+            return Err(anyhow!(StmCircuitError::LotteryIndexTooLarge {
+                index,
+                max_supported,
+            }));
+        }
+
+        if index >= self.m as LotteryIndex {
+            return Err(anyhow!(StmCircuitError::LotteryIndexOutOfBounds {
+                index,
+                m: self.m,
+            }));
+        }
+
+        Ok(())
+    }
+
+    /// Validates Merkle sibling path length against `merkle_tree_depth`.
+    ///
+    /// This guards against inconsistent witness paths and returns
+    /// `StmCircuitError::MerkleSiblingLengthMismatch` on mismatch.
+    pub(crate) fn validate_merkle_sibling_length(&self, actual: usize) -> StmResult<()> {
+        let expected_depth = self.merkle_tree_depth as usize;
+        if actual != expected_depth {
+            return Err(anyhow!(StmCircuitError::MerkleSiblingLengthMismatch {
+                expected_depth: self.merkle_tree_depth,
+                actual: Self::checked_len_u32(actual),
+            }));
+        }
+
+        Ok(())
+    }
+
+    /// Validates Merkle position bits length against `merkle_tree_depth`.
+    ///
+    /// Under the current witness shape, this cannot fail independently from sibling-length
+    /// validation because both lengths derive from `x.siblings`; returns `StmCircuitError::MerklePositionLengthMismatch`.
+    pub(crate) fn validate_merkle_position_length(&self, actual: usize) -> StmResult<()> {
+        let expected_depth = self.merkle_tree_depth as usize;
+        if actual != expected_depth {
+            return Err(anyhow!(StmCircuitError::MerklePositionLengthMismatch {
+                expected_depth: self.merkle_tree_depth,
+                actual: Self::checked_len_u32(actual),
+            }));
+        }
+
+        Ok(())
+    }
+
+    /// Constructs a new `StmCircuit` from Mithril `Parameters`.  
+    ///  
+    /// This constructor only validates that `k` and `m`
+    /// fit into a `u32` by performing fallible `u64 -> u32` conversions. If either value  
+    /// exceeds `u32::MAX`, it returns an error.  
+    ///  
+    /// It does **not** enforce semantic constraints such as `k < m` or other parameter  
+    /// relationships; those invariants are validated later during circuit synthesis via  
+    /// `validate_parameters`.
+    pub fn try_new(stm_params: &Parameters, merkle_tree_depth: u32) -> StmResult<Self> {
+        Ok(Self {
+            k: stm_params.k.try_into().with_context(|| {
+                format!(
+                    "Failed to cast k as a u32. Its value ({}) is too large for the circuit.",
+                    stm_params.k
+                )
+            })?,
+            m: stm_params.m.try_into().with_context(|| {
+                format!(
+                    "Failed to cast m as a u32. Its value ({}) is too large for the circuit.",
+                    stm_params.m
+                )
+            })?,
+            merkle_tree_depth,
+        })
+    }
+}
+
+impl Relation for StmCircuit {
+    type Instance = CircuitInstance;
+    type Witness = CircuitWitness;
+
+    fn format_instance(instance: &Self::Instance) -> Result<Vec<CircuitBase>, Error> {
+        Ok(vec![instance.0.into(), instance.1.into()])
+    }
+
+    fn circuit(
+        &self,
+        std_lib: &ZkStdLib,
+        layouter: &mut impl Layouter<CircuitBase>,
+        instance: Value<Self::Instance>,
+        witness: Value<Self::Witness>,
+    ) -> Result<(), Error> {
+        self.validate_parameters().map_err(to_synthesis_error)?;
+        let witness = witness
+            .map_with_result(|witness| -> StmResult<_> {
+                self.validate_witness_length(witness.len())?;
+                witness
+                    .iter()
+                    .try_for_each(|entry| self.validate_lottery_index(entry.lottery_index))?;
+                Ok(witness)
+            })
+            .map_err(to_synthesis_error)?
+            .transpose_vec(self.k as usize);
+
+        let merkle_tree_commitment: AssignedNative<CircuitBase> =
+            std_lib.assign_as_public_input(layouter, instance.map(|(x, _)| x.into()))?;
+        let message: AssignedNative<CircuitBase> =
+            std_lib.assign_as_public_input(layouter, instance.map(|(_, x)| x.into()))?;
+
+        // Compute H_1(merkle_tree_commitment, message)
+        let hash =
+            std_lib.hash_to_curve(layouter, &[merkle_tree_commitment.clone(), message.clone()])?;
+
+        let generator: AssignedNativePoint<CircuitCurve> = std_lib.jubjub().assign_fixed(
+            layouter,
+            <CircuitCurve as CircuitCurveTrait>::CryptographicGroup::generator(),
+        )?;
+
+        let domain_separation_tag_signature: AssignedNative<_> =
+            std_lib.assign_fixed(layouter, CircuitBase::from(DOMAIN_SEPARATION_TAG_SIGNATURE))?;
+        let domain_separation_tag_lottery: AssignedNative<_> =
+            std_lib.assign_fixed(layouter, CircuitBase::from(DOMAIN_SEPARATION_TAG_LOTTERY))?;
+        let lottery_prefix = std_lib.poseidon(
+            layouter,
+            &[
+                domain_separation_tag_lottery.clone(),
+                merkle_tree_commitment.clone(),
+                message.clone(),
+            ],
+        )?;
+
+        let mut previous_lottery_index: AssignedNative<_> =
+            std_lib.assign(layouter, Value::known(CircuitBase::ZERO))?;
+        for (i, wit) in witness.into_iter().enumerate() {
+            let assigned_witness_entry =
+                assign_witness_entry(self, std_lib, layouter, wit.clone())?;
+
+            // Check lottery index order
+            if i > 0 {
+                assert_strictly_increasing_lottery_index(
+                    std_lib,
+                    layouter,
+                    &previous_lottery_index,
+                    &assigned_witness_entry.lottery_index,
+                )?;
+            }
+
+            previous_lottery_index = assigned_witness_entry.lottery_index.clone();
+
+            let assigned_signature_components =
+                assign_signature_components(std_lib, layouter, wit)?;
+
+            verify_merkle_path(
+                std_lib,
+                layouter,
+                MerklePathInputs {
+                    verification_key: &assigned_witness_entry.verification_key,
+                    lottery_target_value: &assigned_witness_entry.lottery_target_value,
+                    merkle_tree_commitment: &merkle_tree_commitment,
+                    merkle_siblings: &assigned_witness_entry.merkle_path.siblings,
+                    merkle_positions: &assigned_witness_entry.merkle_path.positions,
+                },
+            )?;
+
+            verify_unique_signature(
+                std_lib,
+                layouter,
+                UniqueSchnorrSignatureInputs {
+                    dst_signature: &domain_separation_tag_signature,
+                    generator: &generator,
+                    verification_key: &assigned_witness_entry.verification_key,
+                    response: &assigned_signature_components.response,
+                    challenge_in_base_field: &assigned_signature_components.challenge_in_base_field,
+                    challenge_as_scalar: &assigned_signature_components.challenge_as_scalar,
+                    hash: &hash,
+                    commitment_point: &assigned_signature_components.commitment_point,
+                },
+            )?;
+
+            assert_lottery_won(
+                std_lib,
+                layouter,
+                &lottery_prefix,
+                &assigned_signature_components.commitment_point,
+                &assigned_witness_entry.lottery_index,
+                &assigned_witness_entry.lottery_target_value,
+            )?;
+        }
+
+        // m can be put as a public instance or a constant
+        let m = std_lib.assign_fixed(layouter, CircuitBase::from(self.m as u64))?;
+        assert_lottery_index_in_bounds(std_lib, layouter, &previous_lottery_index, &m)
+    }
+
+    fn used_chips(&self) -> ZkStdLibArch {
+        ZkStdLibArch {
+            jubjub: true,
+            poseidon: true,
+            sha2_256: false,
+            sha2_512: false,
+            keccak_256: false,
+            sha3_256: false,
+            secp256k1: false,
+            bls12_381: false,
+            base64: false,
+            nr_pow2range_cols: 2,
+            automaton: false,
+            blake2b: false,
+        }
+    }
+
+    fn write_relation<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        writer.write_all(&self.k.to_le_bytes())?;
+        writer.write_all(&self.m.to_le_bytes())?;
+        writer.write_all(&self.merkle_tree_depth.to_le_bytes())
+    }
+
+    fn read_relation<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+        // Buffers to read 4 bytes for each `u32` field.
+        let mut k_bytes = [0u8; 4];
+        let mut m_bytes = [0u8; 4];
+        let mut merkle_tree_depth_bytes = [0u8; 4];
+
+        // Read the values into their corresponding buffers.
+        reader.read_exact(&mut k_bytes)?;
+        reader.read_exact(&mut m_bytes)?;
+        reader.read_exact(&mut merkle_tree_depth_bytes)?;
+
+        // Convert the byte arrays back into `u32` values.
+        let k = u32::from_le_bytes(k_bytes);
+        let m = u32::from_le_bytes(m_bytes);
+        let merkle_tree_depth = u32::from_le_bytes(merkle_tree_depth_bytes);
+
+        // Construct and return the `StmCircuit` instance.
+        Ok(Self {
+            k,
+            m,
+            merkle_tree_depth,
+        })
+    }
+}

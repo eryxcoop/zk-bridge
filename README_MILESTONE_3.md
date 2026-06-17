@@ -117,7 +117,7 @@ We're not solving this problem in the scope of this project.
 
 ## Testing
 
-There are Aiken tests for the unlocking script and the used transactions set in [this file](bridge_aiken/validators/tests/unlocking_test.ak) and [this file](bridge_aiken/validators/tests/txs_updater_test.ak) respectively. Their names are mostly self-explanatory.
+There are Aiken tests for the unlocking script and the used transactions set in [this file](bridge-aiken/validators/tests/unlocking_validator_test.ak) and [this file](bridge-aiken/validators/tests/txs_updater_validator_test.ak) respectively. Their names are mostly self-explanatory.
 
 To run the tests, just [install Aiken](https://aiken-lang.org/installation-instructions) and use the command:
 

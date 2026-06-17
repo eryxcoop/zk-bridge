@@ -10,21 +10,30 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0.102"
+bridge_aiken_tx3_client = { package = "zk-bridge", path = "../bridge-aiken/gen/rust-client" }
 clap = { version = "4.5.37", features = ["derive"] }
 hex = "0.4.3"
-mithril-client = { version = "0.12.2", default-features = false, features = [
+mithril-client = { version = "0.14", default-features = false, features = [
     "fs",
     "num-integer-backend",
     "rustls-tls",
     "rustls-tls-webpki-roots",
 ] }
+# mithril-client 0.14 pulls mithril-aggregator-client 0.1.10, whose code uses
+# message types (CardanoBlocksProofsMessage, ...) that only exist in
+# mithril-common >= 0.6.67, which in turn needs the new APIs in mithril-stm >= 0.10.
+# The upstream crates declare loose ">=0.6"/">=0.9" bounds, so we floor them here to
+# stop the resolver from landing on the incompatible mithril-common 0.6.43 / stm 0.9.
+mithril-common = { version = ">=0.6.67", default-features = false }
+mithril-stm = ">=0.10.5"
 reqwest = { version = "0.12.7", default-features = false, features = [
     "json",
     "rustls-tls",
     "rustls-tls-webpki-roots",
 ] }
+pallas = { version = "1.0.0-alpha.6", features = ["hardano", "phase2", "unstable"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
-tokio = { version = "1.51.1", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.51.1", features = ["macros", "rt-multi-thread", "time"] }
 tx_set_update_circuit = { package = "tx-set-update-circuit", path = "../circuit_inclusion_exclusion" }
 mithril_snapshot_circuit = { package = "mithril-circuits-utils", path = "../circuit_transaction_snapshot" }

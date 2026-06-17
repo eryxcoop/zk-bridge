@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 /// Evaluations' types
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub(crate) enum Evaluations {
+    // CHANGED vs upstream: added for Midnight support (committed-instance evals).
+    CommittedInstance(usize),
     Advice(usize),
     Fixed(usize),
     Permutation(char, usize),
@@ -16,6 +18,8 @@ pub(crate) enum Evaluations {
     PermutedTable(usize),
     PermutedInputInverse(usize),
     LookupNext(usize),
+    // CHANGED vs upstream: added for Midnight support (trash-column evals).
+    Trash(usize),
 }
 
 impl Default for Evaluations {

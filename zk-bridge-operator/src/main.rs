@@ -4,6 +4,7 @@ mod io;
 mod mithril_api;
 mod prove;
 mod targets;
+mod tx3_codegen;
 
 use anyhow::Result;
 use clap::Parser;

@@ -20,8 +20,8 @@ pub struct Cli {
     #[arg(long, default_value = "certificates")]
     pub certificate_dir: PathBuf,
 
-    #[arg(long, default_value = "tx_artifacts")]
-    pub tx_artifacts_dir: PathBuf,
+    #[arg(long, default_value = "proven_transactions")]
+    pub proven_transactions_dir: PathBuf,
 
     #[arg(long)]
     pub force: bool,
@@ -62,7 +62,7 @@ pub struct ResolvedCli {
     pub aggregator_url: String,
     pub genesis_verification_key_url: String,
     pub certificate_dir: PathBuf,
-    pub tx_artifacts_dir: PathBuf,
+    pub proven_transactions_dir: PathBuf,
     pub force: bool,
     pub command: Commands,
     pub repo_root: PathBuf,
@@ -80,7 +80,7 @@ impl Cli {
             aggregator_url: self.aggregator_url.clone(),
             genesis_verification_key_url: self.genesis_verification_key_url.clone(),
             certificate_dir: resolve_path(&operator_dir, &self.certificate_dir),
-            tx_artifacts_dir: resolve_path(&operator_dir, &self.tx_artifacts_dir),
+            proven_transactions_dir: resolve_path(&operator_dir, &self.proven_transactions_dir),
             force: self.force,
             command: self.command.clone(),
             repo_root,

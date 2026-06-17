@@ -1,0 +1,28 @@
+{
+  "bridge_fixture": {
+    "locking_tx_hash_hex": "3c8083c0953d51e7d6addb2209c6181bd6723ae659ca93c3902cc0e576960bab",
+    "new_merkle_root_hex": "5cb3f84e41f5ea511f7b59cf8ea373ab2ab73d3f0ce0caffff65d3ce3128254a",
+    "snapshot_root_hex": "da7abe67b81d8fe9f7896670a12cd469397d8e7a8b9a61a47abd8af373aeb213"
+  },
+  "files": {
+    "env/default.ak": "ad3b0f008bf002a4561d806f2f7d1eb68980de3a3181239d0537b5ff75fee38f",
+    "main.tx3": "2b4e7a104390ac72218fe4bda2471a28d18b1d942dfa66decd09d925a60d28d9",
+    "plutus.json": "1c617e81c7b9d72aaef4749949dbda1a27e9e12270f10ce7da70aee1ba9969b2",
+    "scripts/data/bridge_mint_raw.json": "00e46e017255277a8e219d2ba2246466cf10c44d40b4fb5adb3b21ad4898fda7",
+    "scripts/data/mithril_stake_distribution_genesis.json": "54ca51e1870d1b9bd4d676f70bee18e7e6d0b6a1ec508980cc34b001fa93b09d",
+    "scripts/data/mithril_stake_distribution_standard.json": "62e851db73b1de9f199de335b5d56fe37d0004c15c615c4be4c9ad2397d04b6f",
+    "validators/tests/helpers/bridge_fixture.ak": "a920a19081f3ed6c5055497a8392110612925c928917be1797b34c0986656218",
+    "validators/tests/helpers/certificates/cardano_transactions.ak": "06ee79e317129ecd2dece4b1db39ab39cb4b35a89516fe6056756d9811b36f53"
+  },
+  "proof_export_bundle": {
+    "child_certificate_hash": "0x062028d9a71eb9178dabe0018d161d5bc6773a331c3759f8f05661718296387f",
+    "child_signed_message": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "parent_certificate_hash": "0xd6b8be9f69f9a4c304ddaadba8c7ba18b98faf88aa1bc7c372cfc24b34c35c69",
+    "source_id": "bridge-aiken-compatible-fixture",
+    "statement_hash": "0x0707070707070707070707070707070707070707070707070707070707070707"
+  },
+  "tx_snapshot_root": {
+    "bridge_fixture_hex": "0xda7abe67b81d8fe9f7896670a12cd469397d8e7a8b9a61a47abd8af373aeb213",
+    "proof_export_bundle_hex": "0xda7abe67b81d8fe9f7896670a12cd469397d8e7a8b9a61a47abd8af373aeb213"
+  }
+}

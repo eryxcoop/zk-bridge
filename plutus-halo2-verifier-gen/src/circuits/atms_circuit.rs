@@ -209,7 +209,7 @@ mod tests {
 
     #[test]
     fn test_atms_circuit_for_different_proofs() {
-        type PCS = GwcKZGCommitmentScheme<Bls12>;
+        type Pcs = GwcKZGCommitmentScheme<Bls12>;
 
         let seed = [0u8; 32];
         let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -231,8 +231,8 @@ mod tests {
 
         let k: u32 = k_from_circuit(&circuit);
         let kzg_params: ParamsKZG<Bls12> = ParamsKZG::<Bls12>::unsafe_setup(k, rng.clone());
-        let vk: VerifyingKey<Scalar, PCS> = keygen_vk(&kzg_params, &circuit).unwrap();
-        let pk: ProvingKey<Scalar, PCS> = keygen_pk(vk.clone(), &circuit).unwrap();
+        let vk: VerifyingKey<Scalar, Pcs> = keygen_vk(&kzg_params, &circuit).unwrap();
+        let pk: ProvingKey<Scalar, Pcs> = keygen_pk(vk.clone(), &circuit).unwrap();
 
         let instances: &[&[&[Scalar]]] = &[&[&[pks_comm, msg, Base::from(threshold as u64)]]];
         info!("Public inputs: {:?}", instances);
@@ -256,7 +256,7 @@ mod tests {
         let mut transcript_verifier: CircuitTranscript<CardanoFriendlyBlake2b> =
             CircuitTranscript::<CardanoFriendlyBlake2b>::init_from_bytes(&proof);
 
-        let verifier = prepare::<_, PCS, CircuitTranscript<CardanoFriendlyBlake2b>>(
+        let verifier = prepare::<_, Pcs, CircuitTranscript<CardanoFriendlyBlake2b>>(
             &vk,
             instances,
             &mut transcript_verifier,
@@ -303,7 +303,7 @@ mod tests {
         let mut transcript_verifier: CircuitTranscript<CardanoFriendlyBlake2b> =
             CircuitTranscript::<CardanoFriendlyBlake2b>::init_from_bytes(&proof);
 
-        let verifier = prepare::<_, PCS, CircuitTranscript<CardanoFriendlyBlake2b>>(
+        let verifier = prepare::<_, Pcs, CircuitTranscript<CardanoFriendlyBlake2b>>(
             &vk,
             instances,
             &mut transcript_verifier,

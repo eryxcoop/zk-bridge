@@ -15,3 +15,7 @@ pub fn write_pretty_json<T: Serialize>(path: &Path, value: &T) -> Result<()> {
     )
     .with_context(|| format!("writing {}", path.display()))
 }
+
+pub fn write_text(path: &Path, value: impl AsRef<str>) -> Result<()> {
+    fs::write(path, value.as_ref()).with_context(|| format!("writing {}", path.display()))
+}

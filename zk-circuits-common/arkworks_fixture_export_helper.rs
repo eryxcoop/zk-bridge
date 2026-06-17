@@ -77,11 +77,11 @@ pub fn generate_fixture(
 ) -> Result<GeneratedFixture> {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let wasm_path = manifest_dir
-        .join("groth16_artifacts")
+        .join("circuit_build")
         .join(format!("{wrapper_stem}_js"))
         .join(format!("{wrapper_stem}.wasm"));
     let r1cs_path = manifest_dir
-        .join("groth16_artifacts")
+        .join("circuit_build")
         .join(format!("{wrapper_stem}.r1cs"));
 
     let input_json = fs::read_to_string(input_json_path)
@@ -186,13 +186,13 @@ pub fn write_fixture_outputs<S: Serialize, P: Serialize>(
     )
     .with_context(|| format!("could not write {}", out_dir.join("verify.log").display()))?;
     fs::write(
-        out_dir.join("fixture_summary.json"),
-        serde_json::to_vec_pretty(summary).context("could not serialize fixture_summary.json")?,
+        out_dir.join("proof_summary.json"),
+        serde_json::to_vec_pretty(summary).context("could not serialize proof_summary.json")?,
     )
     .with_context(|| {
         format!(
             "could not write {}",
-            out_dir.join("fixture_summary.json").display()
+            out_dir.join("proof_summary.json").display()
         )
     })?;
 

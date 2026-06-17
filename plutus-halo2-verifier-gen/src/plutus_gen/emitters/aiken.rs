@@ -18,6 +18,9 @@ use itertools::Itertools;
 use std::ops::Neg;
 use std::{collections::HashMap, fs::File, iter::once, path::Path};
 
+// CHANGED vs upstream: dropped the `validator_template: Option<&Path>` parameter
+// (renaming `profiler_template` to `profiler_file`). The validator is now rendered
+// from a fixed template path at the end of this function rather than passed in.
 pub fn emit_verifier_code<PCS>(
     template_file: &Path, // aiken mustashe template
     aiken_file: &Path,    // generated aiken file, output
@@ -42,6 +45,8 @@ where
             ProofExtractionSteps::Theta => "    let (theta, transcript) = squeeze_challenge(transcript)\n".to_string(),
             ProofExtractionSteps::Beta => "    let (beta, transcript) = squeeze_challenge(transcript)\n".to_string(),
             ProofExtractionSteps::Gamma => "    let (gamma, transcript) = squeeze_challenge(transcript)\n".to_string(),
+            // CHANGED vs upstream: added for Midnight support (trash-column challenge).
+            ProofExtractionSteps::TrashChallenge => "    let (trash_challenge, transcript) = squeeze_challenge(transcript)\n".to_string(),
             ProofExtractionSteps::PermutationsCommitted => section
                 .zip(letters.clone())
                 .map(|(_permutation, letter)| {
@@ -60,6 +65,14 @@ where
                 })
                 .join(""),
             ProofExtractionSteps::XCoordinate => "    let (x, transcript) = squeeze_challenge(transcript)\n".to_string(),
+            // CHANGED vs upstream: added for Midnight support — committed-instance
+            // columns are evaluated from the proof rather than computed in-circuit.
+            ProofExtractionSteps::InstanceEval => section
+                .enumerate()
+                .map(|(number, _instance_eval)| {
+                    format!("    let (instance_eval_{}, transcript) = read_scalar(transcript)\n", number + 1)
+                })
+                .join(""),
             ProofExtractionSteps::AdviceEval => section
                 .enumerate()
                 .map(|(number, _advice_eval)| {
@@ -85,7 +98,7 @@ where
                     format!(
                         "    let ({}, transcript) = read_scalar(transcript)\n",
                         perm_eval_str(&letter,
-                        n + 1)
+                                      n + 1)
                     )
                 })
                 .join(""),
@@ -103,6 +116,13 @@ where
                     format!("    let (lookup_commitment_{}, transcript) =  read_point(transcript)\n", number + 1)
                 })
                 .join(""),
+            // CHANGED vs upstream: added for Midnight support (trash-column commitments).
+            ProofExtractionSteps::TrashCommitment => section
+                .enumerate()
+                .map(|(number, _trash_commitment)| {
+                    format!("    let (trash_commitment_{}, transcript) =  read_point(transcript)\n", number + 1)
+                })
+                .join(""),
             ProofExtractionSteps::LookupEval => section
                 .enumerate()
                 .map(|(number, _permutation_common)| {
@@ -114,6 +134,13 @@ where
                         number + 1
                     )
                         + &format!("    let (permuted_table_eval_{}, transcript) = read_scalar(transcript)\n", number + 1)
+                })
+                .join(""),
+            // CHANGED vs upstream: added for Midnight support (trash-column evals).
+            ProofExtractionSteps::TrashEval => section
+                .enumerate()
+                .map(|(number, _trash_eval)| {
+                    format!("    let (trash_eval_{}, transcript) = read_scalar(transcript)\n", number + 1)
                 })
                 .join(""),
         })
@@ -134,6 +161,8 @@ where
 
     let mut data: HashMap<String, String> = HashMap::new(); // data to bind to mustache template
 
+    // CHANGED vs upstream: read the public-input count from `circuit.public_inputs`
+    // (tracked during extraction) instead of `proof_instantiation_data.public_inputs_count`.
     data.insert(
         "PUBLIC_INPUTS_COUNT".to_string(),
         circuit.public_inputs.to_string(),
@@ -144,8 +173,51 @@ where
         .join(", ");
     data.insert("PUBLIC_INPUTS_LAGRANGE".to_string(), public_inputs_lagrange);
 
-    let public_inputs = (1..=circuit.proof_instantiation_data.public_inputs_count)
-        .map(|n| format!("    let transcript = common_scalar(i_{}, transcript)\n", n))
+    // CHANGED vs upstream: emit the committed-instance commitments (a Midnight
+    // feature absent from the toy examples) and absorb them into the transcript.
+    let committed_instance_columns = circuit
+        .proof_instantiation_data
+        .committed_instance_commitments
+        .len();
+    let committed_instance_commitments = circuit
+        .proof_instantiation_data
+        .committed_instance_commitments
+        .iter()
+        .enumerate()
+        .map(|(index, commitment)| {
+            format!(
+                "    let committed_instance_commitment_{idx} = #\"{bytes}\"\n    let transcript = common_point(committed_instance_commitment_{idx}, transcript)\n",
+                idx = index + 1,
+                bytes = hex::encode(commitment.to_bytes())
+            )
+        })
+        .join("");
+    data.insert(
+        "COMMITTED_INSTANCE_COMMITMENTS".to_string(),
+        committed_instance_commitments,
+    );
+
+    // CHANGED vs upstream: instances now span multiple variable-length instance
+    // columns (was a single fixed-count loop over `public_inputs_count`). Each
+    // non-committed column absorbs its length followed by its scalar values.
+    let mut input_idx = 1usize;
+    let public_inputs = circuit
+        .proof_instantiation_data
+        .instance_column_lengths
+        .iter()
+        .enumerate()
+        .skip(committed_instance_columns)
+        .map(|(_, length)| {
+            let start = input_idx;
+            input_idx += length;
+            let values = (start..start + length)
+                .map(|n| format!("    let transcript = common_scalar(i_{}, transcript)\n", n))
+                .join("");
+            format!(
+                "    let transcript = common_scalar(from_int({}), transcript)\n{}",
+                length, values
+            )
+        })
         .join("");
 
     data.insert("PUBLIC_INPUTS".to_string(), public_inputs);
@@ -155,6 +227,93 @@ where
         .join(", ");
 
     data.insert("PUBLIC_INPUTS_NAMES".to_string(), public_inputs_names);
+    // CHANGED vs upstream: these `VALIDATOR_*` bindings are new. They parametrize
+    // the generated validator's redeemer (now a generated tuple of `ByteArray`s)
+    // and the per-instance decoding, replacing upstream's fixed redeemer handling
+    // that lived in the `test_data` branch below (`REDEEMER_TYPE`, `HASHING_INSTANCES`,
+    // `VERIFYING_INSTANCES`, `PUBLIC_INPUTS_VARS`).
+    data.insert(
+        "VALIDATOR_REDEEMER_TYPE".to_string(),
+        once("ByteArray".to_string())
+            .chain(
+                (1..=circuit.proof_instantiation_data.public_inputs_count)
+                    .map(|_| "ByteArray".to_string()),
+            )
+            .join(", "),
+    );
+    data.insert(
+        "VALIDATOR_REDEEMER_BINDINGS".to_string(),
+        (1..=circuit.proof_instantiation_data.public_inputs_count)
+            .map(|n| format!(", instance_{}", n))
+            .join(""),
+    );
+    data.insert(
+        "VALIDATOR_INSTANCE_LIST".to_string(),
+        (1..=circuit.proof_instantiation_data.public_inputs_count)
+            .map(|n| format!("instance_{}", n))
+            .join(", "),
+    );
+    data.insert(
+        "VALIDATOR_FROM_BYTES_ARGS".to_string(),
+        (1..=circuit.proof_instantiation_data.public_inputs_count)
+            .map(|n| format!("from_bytes(instance_{})", n))
+            .join(",\n      "),
+    );
+
+    // CHANGED vs upstream: new — compute each instance query's evaluation on-chain
+    // via a Lagrange basis, mapping query columns to their input slots while skipping
+    // committed-instance columns. Upstream had no variable instance-eval handling.
+    let mut input_offset = 1usize;
+    let instance_column_inputs = circuit
+        .proof_instantiation_data
+        .instance_column_lengths
+        .iter()
+        .enumerate()
+        .map(|(column_index, length)| {
+            if column_index < committed_instance_columns {
+                (None, *length)
+            } else {
+                let start = input_offset;
+                input_offset += length;
+                (Some(start), *length)
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let instance_evals = circuit
+        .proof_instantiation_data
+        .instance_query_columns
+        .iter()
+        .zip(
+            circuit
+                .proof_instantiation_data
+                .instance_query_rotations
+                .iter(),
+        )
+        .enumerate()
+        .map(|(query_index, (column_index, rotation))| {
+            assert_eq!(
+                *rotation, 0,
+                "only current-rotation instance queries are supported"
+            );
+            if *column_index <= committed_instance_columns {
+                return String::new();
+            }
+            let effective_column_index = column_index - 1;
+            let (start, length) = instance_column_inputs[effective_column_index];
+            let start = start.expect("instance query mapped to a committed column");
+            let values = (start..start + length)
+                .map(|n| format!("i_{}", n))
+                .join(", ");
+            format!(
+                "    let lagrange_polynomial_instance_{query} = lagrange_polynomial_basis( x, xn, barycentric_weight, rotate_omegas(omega, omega_inv, 0, {length}))\n    let instance_eval_{query} = inner_product(lagrange_polynomial_instance_{query}, [{values}])\n",
+                query = query_index + 1,
+                length = length,
+                values = values
+            )
+        })
+        .join("");
+    data.insert("INSTANCE_EVALS".to_string(), instance_evals);
 
     let extraction_stage = proof_extraction.join("") + &pcs_extraction.join("");
     data.insert("PES".to_string(), extraction_stage);
@@ -179,10 +338,13 @@ where
         .join("");
     data.insert("GATES".to_string(), gates);
 
+    // CHANGED vs upstream: `compiled_lookups_equations` is now a named struct, so
+    // its tables/inputs are accessed as `.tables`/`.inputs` instead of tuple `.1`/`.0`
+    // (here and in the lookup-input/lookup-equation/count uses below).
     let lookup_tables = circuit
         .expressions
         .compiled_lookups_equations
-        .1
+        .tables
         .iter()
         .enumerate()
         .map(|(id, gate)| {
@@ -198,7 +360,7 @@ where
     let lookup_inputs = circuit
         .expressions
         .compiled_lookups_equations
-        .0
+        .inputs
         .iter()
         .enumerate()
         .map(|(id, gate)| {
@@ -211,16 +373,16 @@ where
         .join("");
     data.insert("LOOKUP_INPUTS_EXPRESSIONS".to_string(), lookup_inputs);
 
-    let lookup_equations = (1..=circuit.expressions.compiled_lookups_equations.0.len())
+    let lookup_equations = (1..=circuit.expressions.compiled_lookups_equations.inputs.len())
         .map(|id| {
             // !l1 = evaluation_at_0 * (scalarOne - product_eval_1)
             // !l2 = last_evaluation * (product_eval_1 * product_eval_1 - product_eval_1)
-            // 
+            //
             // !lookup_left_1 = product_eval_1 * (permuted_input_eval_1 + beta) * (permuted_table_eval_1 + gamma)
             // !lookup_right_1 = product_eval_1 * (lookup_input_eq1 + beta) * (lookup_table_eq1 + gamma)
-            // 
+            //
             // !l3 = (lookup_left_1 - lookup_right_1) * active_rows
-            // 
+            //
             // !l4 = evaluation_at_0 * (permuted_input_eval_1 - permuted_table_eval_1)
             // !l5 = (permuted_input_eval_1 - permuted_table_eval_1)
             //     * &(permuted_input_eval_1 - permuted_input_inv_eval_1) * active_rows
@@ -244,6 +406,23 @@ where
         .join("");
 
     data.insert("LOOKUPS".to_string(), lookup_equations);
+
+    // CHANGED vs upstream: new — emit the Midnight STM circuit's "trash" column
+    // expressions (no equivalent in the upstream toy circuits).
+    let trash_equations = circuit
+        .expressions
+        .trash_expressions
+        .iter()
+        .enumerate()
+        .map(|(id, expression)| {
+            format!(
+                "    let trash_expression_{} = {}\n",
+                id + 1,
+                expression.compile_expression()
+            )
+        })
+        .join("");
+    data.insert("TRASH".to_string(), trash_equations);
 
     let permutation_evals = circuit
         .expressions
@@ -354,7 +533,10 @@ where
     let gates_count = circuit.expressions.compiled_gate_equations.len();
     let permutations_eval_count = circuit.expressions.permutations_evaluated_terms.len();
     let sets_count = sets_lhs.len();
-    let lookups_count = circuit.expressions.compiled_lookups_equations.0.len();
+    let lookups_count = circuit.expressions.compiled_lookups_equations.inputs.len();
+    // CHANGED vs upstream: added — number of trash expressions folded into the
+    // vanishing argument below.
+    let trash_count = circuit.expressions.trash_expressions.len();
 
     let mut total_nb_expressions = 0;
 
@@ -421,12 +603,28 @@ where
     vanishing_expressions.extend(expressions);
     total_nb_expressions += lookups_count * 5;
 
+    // CHANGED vs upstream: new — append the trash expressions to the vanishing set.
+    let expressions = (1..=trash_count)
+        .map(|n| {
+            format!(
+                "    let expression{} = trash_expression_{}\n",
+                n + total_nb_expressions,
+                n
+            )
+        })
+        .collect::<Vec<_>>();
+    vanishing_expressions.extend(expressions);
+    total_nb_expressions += trash_count;
+
     data.insert(
         "VANISHING_EXPRESSIONS".to_string(),
         vanishing_expressions.join(""),
     );
 
-    let mut vanishing_evaluation = format!("add(mul({}, y), expression1)", ZERO_STR);
+    // CHANGED vs upstream: seed the Horner fold with `expression1` directly instead
+    // of `add(mul(ZERO, y), expression1)`. The leading `mul(ZERO, y)` term was dead
+    // (always zero), so dropping it saves work in the generated verifier.
+    let mut vanishing_evaluation = "expression1".to_string();
     for n in 2..=(total_nb_expressions) {
         vanishing_evaluation = format!("add(mul({}, y), expression{})", vanishing_evaluation, n)
     }
@@ -444,7 +642,7 @@ where
         .join("");
     data.insert("H_COMMITMENTS".to_string(), h_commitments);
 
-    let (unique_grouped_points, commitment_data) = PCS::precompute_intermediate_sets(&circuit);
+    let (unique_grouped_points, commitment_data) = PCS::precompute_intermediate_sets(circuit);
 
     if PCS::pcs_type() == PCSType::Halo2MultiOpen {
         let point_sets_indexes: Vec<usize> = (0..unique_grouped_points.len()).collect();
@@ -468,8 +666,15 @@ where
             (point_sets_indexes.len() + 1).to_string(),
         );
 
-        let q_evaluations = PCS::pcs_data_plinth(&circuit);
+        // CHANGED vs upstream: call the Aiken PCS emitter `pcs_data_aiken` (the
+        // Plinth emitter `pcs_data_plinth` was removed with the Plinth backend).
+        let q_evaluations = PCS::pcs_data_aiken(circuit);
         data.insert("HALO2_Q_EVALS_FROM_PROOF".to_string(), q_evaluations);
+        // CHANGED vs upstream: added — names for the per-point-set q-evaluations,
+        // referenced by the inlined MSM code below.
+        let q_eval_names: Vec<String> = (1..=point_sets_indexes.len())
+            .map(|idx| format!("q_eval_on_x3_{idx}"))
+            .collect();
 
         // Pre-sort commitment data by point set index to save on this inside the contract
         let halo2_commitment_data = point_sets_indexes
@@ -503,13 +708,61 @@ where
             format!("\tlet commitment_data = [{}]", halo2_commitment_data);
         data.insert("HALO2_COMMITMENT_MAP".to_string(), kzg_halo2_commitment_map);
 
-        let kzg_halo2_point_sets = unique_grouped_points
-            .iter()
-            .map(|set| set.iter().map(RotationDescription::to_string).join(","))
-            .join("],[");
+        // CHANGED vs upstream: upstream emitted a `point_sets` literal into the
+        // template (`HALO2_POINT_SETS`) and let the on-chain code fold the multi-open.
+        // Here the entire per-set folding is generated inline as Aiken code
+        // (`HALO2_MSM_CODE`) so it can be partitioned across the two-phase split and
+        // matches the native Halo2/Midnight multi-open ordering exactly. The
+        // `HALO2_POINT_SETS` slot is therefore left empty.
+        data.insert("HALO2_POINT_SETS".to_string(), String::new());
 
-        let kzg_halo2_point_sets = format!("     let point_sets = [[{}]]", kzg_halo2_point_sets);
-        data.insert("HALO2_POINT_SETS".to_string(), kzg_halo2_point_sets);
+        let mut msm_lines = vec![
+            // Inline the per-set folding so the generated verifier matches the
+            // native Halo2/Midnight multi-open ordering exactly.
+            "    let final_com = compute_final_comm_with_f(\n        x1Powers,\n        x4Powers,\n        f_commitment,\n        commitment_data,\n    )".to_string(),
+        ];
+
+        for (idx, point_set) in unique_grouped_points.iter().enumerate() {
+            let points_literal = format!(
+                "[{}]",
+                point_set
+                    .iter()
+                    .map(RotationDescription::as_string)
+                    .join(", ")
+            );
+            let set_num = idx + 1;
+            let q_eval_name = &q_eval_names[idx];
+            msm_lines.push(format!(
+                "    let evals_{set_num} = compute_q_eval_for_set({}, x1Powers, commitment_data)",
+                idx
+            ));
+            msm_lines.push(format!(
+                "    let r_eval_{set_num} = lagrange_evaluation(zip({points_literal}, evals_{set_num}), x3)"
+            ));
+            msm_lines.push(format!(
+                "    let denominator_{set_num} =\n        recip_eea(\n            foldl(\n                {points_literal},\n                from_int(1),\n                fn(point, acc) {{ mul(acc, sub(x3, point)) }},\n            ),\n        )"
+            ));
+            msm_lines.push(format!(
+                "    let term_{set_num} = mul(sub({q_eval_name}, r_eval_{set_num}), denominator_{set_num})"
+            ));
+        }
+
+        let mut f_eval_expr = format!("term_{}", point_sets_indexes.len());
+        for idx in (1..point_sets_indexes.len()).rev() {
+            f_eval_expr = format!("add(mul({f_eval_expr}, x2), term_{idx})");
+        }
+        msm_lines.push(format!("    let f_eval = {f_eval_expr}"));
+        msm_lines.push(format!(
+            "    let v = compute_v(f_eval, x4Powers, [{}])",
+            q_eval_names.join(", ")
+        ));
+        msm_lines.push("    let v_term = scaleG1(decompress(neg_g1_generator), v)".to_string());
+        msm_lines.push("    let pi_term_g1 = decompress(pi_term)".to_string());
+        msm_lines.push("    let pi_term_scaled = scaleG1(pi_term_g1, x3)".to_string());
+        msm_lines.push("    let correction = addG1(v_term, pi_term_scaled)".to_string());
+        msm_lines.push("    let er = addG1(final_com, correction)".to_string());
+
+        data.insert("HALO2_MSM_CODE".to_string(), msm_lines.join("\n"));
     }
 
     if PCS::pcs_type() == PCSType::GWC19 {
@@ -520,11 +773,37 @@ where
         let optimized_left = flatten_msm(&left).optimize_msm();
         let optimized_right = flatten_msm(&right).optimize_msm();
 
-        let kzg_gwc19_msm = format!(
-            "    let el = eval({})\n    let er = eval({})",
-            optimized_left.compile_expression(),
-            optimized_right.compile_expression()
-        );
+        // CHANGED vs upstream: upstream emitted the MSMs as `eval(<MSM tree>)` for
+        // el/er. Here they are compiled to an inline addG1/scaleG1 chain
+        // (`compile_inline`) and the W points shared between el and er are
+        // decompressed once up front, avoiding redundant decompressions on-chain.
+        // Find W points shared between el and er to decompress them once
+        let left_w = optimized_left.w_indices();
+        let right_w = optimized_right.w_indices();
+        let shared_w: std::collections::HashSet<usize> =
+            left_w.intersection(&right_w).cloned().collect();
+
+        let mut shared_decompress = shared_w.iter().collect::<Vec<_>>();
+        shared_decompress.sort();
+        let shared_decompress_code = shared_decompress
+            .iter()
+            .map(|idx| format!("    let w{}_g1 = decompress(w{})", *idx + 1, *idx + 1))
+            .join("\n");
+
+        let kzg_gwc19_msm = if shared_decompress_code.is_empty() {
+            format!(
+                "    let el = {}\n    let er = {}",
+                optimized_left.compile_inline(&std::collections::HashSet::new()),
+                optimized_right.compile_inline(&std::collections::HashSet::new())
+            )
+        } else {
+            format!(
+                "{}\n    let el = {}\n    let er = {}",
+                shared_decompress_code,
+                optimized_left.compile_inline(&shared_w),
+                optimized_right.compile_inline(&shared_w)
+            )
+        };
         data.insert("GWC19_MSM".to_string(), kzg_gwc19_msm.clone());
 
         // Extract max powers of v and u by traversing scalar operations in optimized MSMs
@@ -611,6 +890,12 @@ where
                 test_valid_proof_valid_inputs,
             );
 
+            // CHANGED vs upstream: render the optional profiler here. Upstream did
+            // this near the end of the function alongside redeemer/instance bindings
+            // (`PUBLIC_INPUTS_VARS`, `HASHING_INSTANCES`, `REDEEMER_TYPE`,
+            // `VERIFYING_INSTANCES`) and a separately-passed validator template; those
+            // bindings are now the `VALIDATOR_*` data above and the validator is
+            // rendered from a fixed path at the end of the function.
             if let Some(template) = profiler_file {
                 let mut handlebars = Handlebars::new();
                 handlebars.set_strict_mode(true);
@@ -675,6 +960,15 @@ where
     handlebars.register_template_file("aiken_template", template_file)?;
     let mut output_file = File::create(aiken_file)?;
     handlebars.render_to_write("aiken_template", &data, &mut output_file)?;
+    // CHANGED vs upstream: always render the validator from a fixed template path
+    // here, instead of from an optional `validator_template` parameter handled inside
+    // the `test_data` branch.
+    handlebars.register_template_file(
+        "validator_template",
+        "aiken-verifier/templates/validator.hbs",
+    )?;
+    let mut validator_output = File::create("aiken-verifier/aiken_halo2/validators/verifier.ak")?;
+    handlebars.render_to_write("validator_template", &data, &mut validator_output)?;
     handlebars.render("aiken_template", &data)
 }
 
@@ -808,8 +1102,10 @@ where
     handlebars.render("aiken_template", &data)
 }
 
+// CHANGED vs upstream: now takes 8 query lists instead of 6 (the extra two are
+// the committed-instance and trash queries added for Midnight support).
 #[allow(dead_code)]
-fn construct_intermediate_sets(queries: [Vec<Query>; 6]) -> Vec<(Vec<Query>, RotationDescription)> {
+fn construct_intermediate_sets(queries: [Vec<Query>; 8]) -> Vec<(Vec<Query>, RotationDescription)> {
     let mut point_query_map: Vec<(RotationDescription, Vec<Query>)> = Vec::new();
     for query in queries.iter().flatten() {
         if let Some(pos) = point_query_map
@@ -835,8 +1131,8 @@ fn powers(name: char) -> impl Iterator<Item = ScalarOperation> {
     (0..).map(move |idx| ScalarOperation::Power(name, idx))
 }
 
-//this is done in Plinth with template haskell since there is no macro language for aiken
-// constructing final MSM was reimplemented with pure code generation
+// Constructing the final MSM is done with pure code generation because
+// Aiken does not have a macro/template system inside the language itself.
 // to make it easier to debug this function is 1:1 analog to multi_prepare
 // in src/poly/gwc_kzg/mod.rs
 // in https://github.com/input-output-hk/halo2/blob/gwc19_kzg/src/poly/gwc_kzg/mod.rs#L142-L212
@@ -1037,7 +1333,7 @@ impl OptimizedMSM {
                 insertion_order.push(key.clone());
             }
 
-            groups.entry(key).or_insert_with(Vec::new).push(scalar);
+            groups.entry(key).or_default().push(scalar);
         }
 
         // Combine scalars for each G1 point
@@ -1072,8 +1368,7 @@ impl OptimizedMSM {
     /// Recursively traverses all scalar operations to find Power(var_name, exponent).
     #[allow(dead_code)]
     fn find_max_power(&self, var_name: char) -> i32 {
-        (*self)
-            .elements
+        self.elements
             .iter()
             .map(|element| {
                 let scalar = match element {
@@ -1130,6 +1425,98 @@ impl AikenExpression for OptimizedMSM {
     }
 }
 
+// NEW vs upstream: this impl block (`compile_inline` + `w_indices`) replaces the
+// `eval(<MSM tree>)`-based GWC19 output. It compiles an MSM to an inline
+// addG1/scaleG1/decompress chain, negates the generator via the `bls12_381_g1_neg`
+// builtin instead of a precomputed `neg_g1_generator`, and exposes the W indices
+// used (so shared ones are decompressed once).
+impl OptimizedMSM {
+    /// Compile the MSM as an inline chain of addG1/scaleG1/decompress calls,
+    /// avoiding the foldl/MSMElement overhead. Also optimizes away scaleG1 when
+    /// the scalar is scalarOne (Power(_, 0)).
+    ///
+    /// `predecompressed_w` contains W point indices that have already been
+    /// decompressed into `w{N}_g1` variables. These are referenced directly
+    /// instead of calling decompress again.
+    fn compile_inline(&self, predecompressed_w: &std::collections::HashSet<usize>) -> String {
+        fn is_scalar_one(s: &ScalarOperation) -> bool {
+            matches!(s, ScalarOperation::Power(_, 0))
+        }
+
+        let point_expr =
+            |element: &ElementMSM, predecomp: &std::collections::HashSet<usize>| -> String {
+                match element {
+                    ElementMSM::Element(_, commitment) => {
+                        // VanishingG is already a G1Element (computed via addG1/scaleG1 chain),
+                        // so it does not need decompress. All other commitments are ByteArray.
+                        if matches!(commitment, Commitments::VanishingG) {
+                            commitment.compile_expression()
+                        } else {
+                            format!("decompress({})", commitment.compile_expression())
+                        }
+                    }
+                    ElementMSM::ElementW(_, index) => {
+                        if predecomp.contains(index) {
+                            format!("w{}_g1", index + 1)
+                        } else {
+                            format!("decompress(w{})", index + 1)
+                        }
+                    }
+                    // The -G MSM term: emitted inline via the `bls12_381_g1_neg`
+                    // builtin (imported by the verification templates), replacing
+                    // upstream's precomputed `neg_g1_generator` constant.
+                    ElementMSM::ElementNegatedG1(_) => "bls12_381_g1_neg(generator)".to_string(),
+                }
+            };
+
+        fn scalar_expr(element: &ElementMSM) -> &ScalarOperation {
+            match element {
+                ElementMSM::Element(s, _) => s,
+                ElementMSM::ElementW(s, _) => s,
+                ElementMSM::ElementNegatedG1(s) => s,
+            }
+        }
+
+        let scaled_point =
+            |element: &ElementMSM, predecomp: &std::collections::HashSet<usize>| -> String {
+                let s = scalar_expr(element);
+                let p = point_expr(element, predecomp);
+                if is_scalar_one(s) {
+                    p
+                } else {
+                    format!("scaleG1({}, {})", p, s.compile_expression())
+                }
+            };
+
+        if self.elements.is_empty() {
+            return "zero".to_string();
+        }
+
+        let mut iter = self.elements.iter().rev();
+        let last = iter.next().unwrap();
+        let mut result = scaled_point(last, predecompressed_w);
+        for element in iter {
+            result = format!(
+                "addG1({}, {})",
+                scaled_point(element, predecompressed_w),
+                result
+            );
+        }
+        result
+    }
+
+    /// Returns the set of W point indices used by this MSM.
+    fn w_indices(&self) -> std::collections::HashSet<usize> {
+        self.elements
+            .iter()
+            .filter_map(|e| match e {
+                ElementMSM::ElementW(_, index) => Some(*index),
+                _ => None,
+            })
+            .collect()
+    }
+}
+
 impl AikenExpression for ScalarOperation {
     fn compile_expression(&self) -> String {
         match self {
@@ -1176,7 +1563,7 @@ impl AikenExpression for ScalarOperation {
                     scalar_b.compile_expression()
                 )
             }
-            Self::Rotation(x) => RotationDescription::to_string(x),
+            Self::Rotation(x) => RotationDescription::as_string(x),
         }
     }
 }

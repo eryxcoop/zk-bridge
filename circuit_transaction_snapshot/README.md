@@ -144,7 +144,7 @@ and verify that it passes. No network access or real Mithril data is needed. If 
 confirm that the circuit compiles correctly and that the Groth16 proof verifies.
 
 ```bash
-./scripts/build_groth16_artifacts.sh
+./scripts/build_circuit.sh
 ./scripts/run_e2e_test.sh
 cargo test --lib
 cargo test --test groth16_offline -- --nocapture

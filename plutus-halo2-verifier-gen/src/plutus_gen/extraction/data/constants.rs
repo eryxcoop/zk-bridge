@@ -7,6 +7,9 @@ pub(crate) const THETA_STR: &str = "theta";
 
 pub(crate) const X_STR: &str = "x";
 pub(crate) const XN_STR: &str = "xn";
+// CHANGED vs upstream: added — `x_chop` (x^(n-1)) is used by the reworked
+// vanishing-polynomial expressions (see extraction_steps/vanishing.rs).
+pub(crate) const X_CHOP_STR: &str = "x_chop";
 
 // Common constant names
 pub(crate) const SCALAR_DELTA_STR: &str = "scalarDelta";

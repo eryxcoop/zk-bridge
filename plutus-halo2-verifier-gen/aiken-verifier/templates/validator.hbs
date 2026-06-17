@@ -1,0 +1,49 @@
+use aiken/builtin.{append_bytearray}
+{{!-- CHANGED vs upstream: added `foldl`, used below to hash a variable-length
+     list of public-input instances into the NFT name. --}}
+use aiken/collection/list.{foldl}
+use aiken/crypto.{blake2b_256}
+use aiken/crypto/bls12_381/scalar.{from_bytes}
+use cardano/assets.{PolicyId, has_nft_strict}
+use cardano/transaction.{Transaction}
+use proof_verifier.{verifier}
+
+{{!-- CHANGED vs upstream: the redeemer was the fixed `{{{REDEEMER_TYPE}}}`.
+     It is now a generated tuple so the emitted shape can carry a variable
+     number of public inputs / split fields for the Mithril STM circuit. --}}
+type Redeemer =
+  ({{{VALIDATOR_REDEEMER_TYPE}}})
+
+validator halo2 {
+  mint(redeemer: Redeemer, policy_id: PolicyId, transaction: Transaction) {
+    {{!-- CHANGED vs upstream `(proof, {{{PUBLIC_INPUTS_VARS}}})`: bindings are
+         now generated to match the parametrized redeemer above. --}}
+    let (proof{{{VALIDATOR_REDEEMER_BINDINGS}}}) = redeemer
+
+    {{!-- CHANGED vs upstream: upstream inlined a single `{{{HASHING_INSTANCES}}}`
+         placeholder. We fold an arbitrary-length list of instance byte arrays
+         (starting from `proof`) into the value hashed for the NFT name, so any
+         number of public inputs is supported. --}}
+    let for_hashing =
+      foldl(
+        [{{{VALIDATOR_INSTANCE_LIST}}}],
+        proof,
+        fn(acc, bytes) { append_bytearray(acc, bytes) },
+      )
+
+    let expected_nft_name = blake2b_256(for_hashing)
+
+    expect has_nft_strict(transaction.mint, policy_id, expected_nft_name)
+
+    verifier(
+      proof,
+      {{!-- CHANGED vs upstream `{{{VERIFYING_INSTANCES}}}`: the verifier args
+           (public inputs decoded `from_bytes`) are now generated. --}}
+      {{{VALIDATOR_FROM_BYTES_ARGS}}}
+    )
+  }
+
+  else(_) {
+    fail
+  }
+}

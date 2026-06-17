@@ -6,12 +6,11 @@
 //! must implement, as well as the implementation of the trait for the supported
 //! KZG based PCS.
 
-use super::data::{CircuitRepresentation, CommitmentData, Commitments, Query, RotationDescription};
+use super::data::{CircuitRepresentation, CommitmentData, Commitments, RotationDescription};
 
 #[cfg(feature = "plutus_debug")]
 use log::info;
 
-use itertools::Itertools;
 use std::collections::HashMap;
 
 pub(crate) mod gwc;
@@ -35,74 +34,154 @@ pub trait ExtractPCS {
     type PCSData: Default;
 
     /// Function to precompute the permutation sets and related committed data.
+    // CHANGED vs upstream: rewritten. The original grouped commitments with
+    // itertools (`into_group_map_by` / `unique`). This version assigns each
+    // distinct rotation a stable point index and builds the point sets by index,
+    // panicking on duplicated queries. It is deterministic and handles the larger
+    // Midnight circuit's query set (committed instances, trash, more lookups).
     fn precompute_intermediate_sets(
         circuit_repr: &CircuitRepresentation<Self>,
     ) -> IntermediateSets {
         let queries = circuit_repr.queries.all_ordered();
+        #[derive(Clone, Debug)]
+        struct RawCommitmentData {
+            commitment: Commitments,
+            point_set_index: usize,
+            point_indices: Vec<usize>,
+            evaluations: Vec<super::data::Evaluations>,
+        }
 
-        let ordered_unique_commitments = queries.iter().flatten().map(|q| &q.commitment);
-        let ordered_unique_commitments: Vec<Commitments> =
-            ordered_unique_commitments.cloned().unique().collect();
+        let mut commitments: Vec<RawCommitmentData> = vec![];
+        let mut point_index_map: HashMap<RotationDescription, usize> = HashMap::new();
+        let mut inverse_point_index_map: Vec<RotationDescription> = vec![];
 
-        let commitment_map: HashMap<Commitments, Vec<&Query>> = queries
+        for query in queries.iter().flatten() {
+            let point_idx = if let Some(existing) = point_index_map.get(&query.point) {
+                *existing
+            } else {
+                let next_index = inverse_point_index_map.len();
+                point_index_map.insert(query.point, next_index);
+                inverse_point_index_map.push(query.point);
+                next_index
+            };
+
+            if let Some(commitment_data) = commitments
+                .iter_mut()
+                .find(|commitment_data| commitment_data.commitment == query.commitment)
+            {
+                if commitment_data.point_indices.contains(&point_idx) {
+                    panic!(
+                        "duplicated query for commitment {:?} at point {:?}",
+                        query.commitment, query.point
+                    );
+                }
+                commitment_data.point_indices.push(point_idx);
+            } else {
+                commitments.push(RawCommitmentData {
+                    commitment: query.commitment,
+                    point_set_index: 0,
+                    point_indices: vec![point_idx],
+                    evaluations: vec![],
+                });
+            }
+        }
+
+        let mut commitment_set_map: Vec<(Commitments, Vec<usize>)> =
+            Vec::with_capacity(commitments.len());
+        let mut point_sets: Vec<Vec<usize>> = vec![];
+
+        for commitment_data in commitments.iter() {
+            let mut point_index_set = commitment_data.point_indices.clone();
+            point_index_set.sort_unstable();
+
+            commitment_set_map.push((commitment_data.commitment, point_index_set.clone()));
+
+            if !point_sets.contains(&point_index_set) {
+                point_sets.push(point_index_set);
+            }
+        }
+
+        for commitment_data in commitments.iter_mut() {
+            commitment_data.evaluations =
+                vec![super::data::Evaluations::default(); commitment_data.point_indices.len()];
+        }
+
+        for query in queries.iter().flatten() {
+            let point_index = point_index_map
+                .get(&query.point)
+                .unwrap_or_else(|| panic!("point index for {:?} not found", query.point));
+
+            let point_index_set = commitment_set_map
+                .iter()
+                .find(|(commitment, _)| *commitment == query.commitment)
+                .map(|(_, set)| set)
+                .unwrap_or_else(|| {
+                    panic!(
+                        "point index set for commitment {:?} not found",
+                        query.commitment
+                    )
+                });
+
+            let point_index_in_set = point_index_set
+                .iter()
+                .position(|index| index == point_index)
+                .unwrap_or_else(|| {
+                    panic!(
+                        "point index {:?} not found in set for commitment {:?}",
+                        point_index, query.commitment
+                    )
+                });
+
+            let point_set_index = point_sets
+                .iter()
+                .position(|set| set == point_index_set)
+                .unwrap_or_else(|| panic!("point set {:?} not found", point_index_set));
+
+            let commitment_data = commitments
+                .iter_mut()
+                .find(|commitment_data| commitment_data.commitment == query.commitment)
+                .unwrap_or_else(|| {
+                    panic!("commitment data for {:?} not found", query.commitment)
+                });
+
+            commitment_data.point_set_index = point_set_index;
+            commitment_data.evaluations[point_index_in_set] = query.evaluation;
+        }
+
+        let unique_grouped_points = point_sets
             .iter()
-            .flatten()
-            .into_group_map_by(|e| e.commitment.clone());
+            .map(|point_index_set| {
+                point_index_set
+                    .iter()
+                    .map(|point_index| {
+                        *inverse_point_index_map.get(*point_index).unwrap_or_else(|| {
+                            panic!("inverse point index {:?} not found", point_index)
+                        })
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
 
-        let point_sets_map: HashMap<Commitments, Vec<RotationDescription>> = commitment_map
-            .iter()
-            .map(|(k, v)| {
-                (
-                    k.clone(),
-                    v.iter()
-                        .map(|e| &e.point)
-                        .cloned()
-                        .unique()
-                        .collect::<Vec<_>>(),
-                )
+        let commitment_data = commitments
+            .into_iter()
+            .map(|commitment_data| {
+                unique_grouped_points
+                    .get(commitment_data.point_set_index)
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "grouped points for set {} not found",
+                            commitment_data.point_set_index
+                        )
+                    });
+
+                CommitmentData {
+                    commitment: commitment_data.commitment,
+                    point_set_index: commitment_data.point_set_index,
+                    evaluations: commitment_data.evaluations,
+                }
             })
             .collect();
 
-        let mut grouped_points: Vec<Vec<RotationDescription>> = vec![];
-
-        for commitment in ordered_unique_commitments.iter() {
-            grouped_points.push(
-                point_sets_map
-                    .get(commitment)
-                    .unwrap_or_else(|| {
-                        panic!("point set for commitment {:?} not found", commitment)
-                    })
-                    .clone(),
-            );
-        }
-
-        let unique_grouped_points: Vec<Vec<_>> = grouped_points.iter().cloned().unique().collect();
-
-        let point_sets_indexes: HashMap<_, _> = unique_grouped_points
-            .iter()
-            .enumerate()
-            .map(|(a, b)| (b.clone(), a))
-            .collect();
-
-        let mut commitment_data: Vec<CommitmentData> = vec![];
-
-        for commitment in ordered_unique_commitments.iter() {
-            let query = commitment_map
-                .get(commitment)
-                .unwrap_or_else(|| panic!("queries for commitment {:?} not found", commitment));
-            let points: Vec<RotationDescription> = query.iter().map(|q| q.point.clone()).collect();
-
-            let point_set_idx = point_sets_indexes
-                .get(&points)
-                .unwrap_or_else(|| panic!("point set for commitment {:?} not found", commitment));
-
-            commitment_data.push(CommitmentData {
-                commitment: (*commitment).clone(),
-                point_set_index: *point_set_idx,
-                evaluations: query.iter().map(|q| q.evaluation.clone()).collect(),
-                points,
-            });
-        }
         (unique_grouped_points, commitment_data)
     }
 
@@ -111,17 +190,15 @@ pub trait ExtractPCS {
     fn extract_pcs(circuit_repr: &mut CircuitRepresentation<Self>);
     /// Function for emitting the PCS steps in Aiken.
     fn step_to_aiken(step: Self::PCSExtractionSteps, number: usize) -> String;
-    /// Function for emitting the PCS steps in Plinth.
-    fn step_to_plinth(step: Self::PCSExtractionSteps, number: usize) -> String;
 
     /// Function for extracting the PCS data to the circuit representation
     /// structure.
     fn pcs_data(circuit_repr: &CircuitRepresentation<Self>) -> usize;
     /// Function for emitting the PCS data in Aiken.
     fn pcs_data_aiken(circuit_repr: &CircuitRepresentation<Self>) -> String;
-    /// Function for emitting the PCS data in Plinth.
-    fn pcs_data_plinth(circuit_repr: &CircuitRepresentation<Self>) -> String;
 
     /// Function for determining the type of PCS used in the circuit.
     fn pcs_type() -> PCSType;
+    // CHANGED vs upstream: removed the Plinth trait methods `step_to_plinth` and
+    // `pcs_data_plinth` (Aiken-only subrepo, see point 2).
 }

@@ -1,9 +1,9 @@
 # Transaction Set Update Circuit
 
-This circuit proves that a Cardano transaction was not previously part of the set of used transactions, 
-and that the set was then updated to include it. It is one of the two ZK proofs required by the bridge: 
+This circuit proves that a Cardano transaction was not previously part of the set of used transactions,
+and that the set was then updated to include it. It is one of the two ZK proofs required by the bridge:
 without it, an unlocking validator on Cardano could be tricked into releasing funds twice for the same
-burn transaction on the other chain, and a minting validator on the other chain could be tricked 
+burn transaction on the other chain, and a minting validator on the other chain could be tricked
 into minting twice for the same locking transaction on Cardano.
 
 ## How the Transaction Set Update Works
@@ -17,22 +17,22 @@ where the path of a transaction is determined by the bits of its `tx_id`:
 - internal nodes are `Poseidon255(left, right)` over the BLS12-381 scalar field
 - the path from root to leaf is read from the big-endian bits of `tx_id`
 
-Because every possible `tx_id` corresponds to a unique fixed leaf position, the same Merkle path 
-serves both to prove that a transaction is **absent** (the leaf at that position is `Fr(0)`) 
+Because every possible `tx_id` corresponds to a unique fixed leaf position, the same Merkle path
+serves both to prove that a transaction is **absent** (the leaf at that position is `Fr(0)`)
 and that it is **present** (the leaf is `Fr(1)`). The sibling hashes along the path do not change
 when only that leaf is flipped.
 
-The circuit takes the `tx_id`, the old root `mt_root_in`, the new root `mt_root_out`, and the Merkle path 
+The circuit takes the `tx_id`, the old root `mt_root_in`, the new root `mt_root_out`, and the Merkle path
 (the sibling hashes at each of the `256` levels) as input, and enforces two statements at once using the same path:
 
-- recomputing the root from the path with an empty leaf (`Fr(0)`) yields `mt_root_in` 
+- recomputing the root from the path with an empty leaf (`Fr(0)`) yields `mt_root_in`
   (the transaction was **not** in the old set)
 - recomputing the root from the same path with a present leaf (`Fr(1)`)
   yields `mt_root_out` (the transaction **is** in the new set)
 
-Since both reconstructions share the same siblings, a valid proof also guarantees that `mt_root_out` is 
+Since both reconstructions share the same siblings, a valid proof also guarantees that `mt_root_out` is
 exactly the result of inserting `tx_id` into the set represented by `mt_root_in`, with no other leaves touched.
-The three values `tx_id`, `mt_root_in`, and `mt_root_out` are exposed as public outputs so the bridge 
+The three values `tx_id`, `mt_root_in`, and `mt_root_out` are exposed as public outputs so the bridge
 validators can check them against the transaction being processed and the state stored on-chain.
 
 ## Current Status
@@ -80,13 +80,13 @@ and verify that it passes. No network access or real Mithril data is needed. If 
 confirm that the circuit compiles correctly and that the Groth16 proof verifies.
 
 ```bash
-./scripts/build_groth16_artifacts.sh
+./scripts/build_circuit.sh
 ./scripts/run_e2e_test.sh
 cargo test --lib
 cargo test --test groth16_offline -- --nocapture
 ```
 
-If everything ran correctly, `groth16_artifacts/final_fixture/fixture_summary.json` should
+If everything ran correctly, `circuit_build/groth16_sample_proof/proof_summary.json` should
 contain the following fields, which confirm that the circuit compiled, the witness was
 satisfiable, and the proof verified:
 
@@ -99,9 +99,9 @@ The `tx_id_hex`, `mt_root_in_hex`, and `mt_root_out_hex` fields in that file con
 the transaction hash that was proven, the root of the set before the update, and the
 root of the set after the update.
 
-Stale historical `groth16_artifacts/test_runs/` directories were pruned after
-the shared operator migration, so the kept canonical artifact is the regenerated `groth16_artifacts/final_fixture/`.
+Stale historical `circuit_build/test_runs/` directories were pruned after
+the shared operator migration, so the kept canonical artifact is the regenerated `circuit_build/groth16_sample_proof/`.
 
 The shared operator path using real Mithril data was also revalidated end-to-end:
-`zk-bridge-operator tx prove <transaction-hash>` now generates a `tx_set_update/fixture_summary.json` 
+`zk-bridge-operator tx prove <transaction-hash>` now generates a `tx_set_update/proof_summary.json`
 with `verified=true`.

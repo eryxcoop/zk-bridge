@@ -20,7 +20,9 @@ pub enum RotationDescription {
 }
 
 impl RotationDescription {
-    pub(crate) fn to_string(&self) -> String {
+    // CHANGED vs upstream: renamed `to_string` -> `as_string` to avoid shadowing
+    // the inherent/`Display`-derived `to_string` method.
+    pub(crate) fn as_string(&self) -> String {
         match self {
             RotationDescription::Last => "x_last".to_string(),
             RotationDescription::Previous => "x_prev".to_string(),

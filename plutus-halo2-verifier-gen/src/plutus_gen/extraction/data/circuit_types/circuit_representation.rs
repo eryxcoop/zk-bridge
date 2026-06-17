@@ -15,6 +15,8 @@ use crate::plutus_gen::extraction::pcs::ExtractPCS;
 pub struct CircuitRepresentation<PCS: ExtractPCS + ?Sized> {
     pub(crate) proof_instantiation_data: InstantiationSpecificData,
     pub(crate) pcs_instantiation_data: PCS::PCSData,
+    // CHANGED vs upstream: added — tracks the number of public inputs (scalars),
+    // which is variable for the Midnight STM circuit.
     pub(crate) public_inputs: i32, // public_inputs are scalars
     pub(crate) proof_extraction_steps: Vec<ProofExtractionSteps>,
     pub(crate) pcs_extraction_steps: Vec<PCS::PCSExtractionSteps>,
@@ -77,18 +79,19 @@ impl<PCS: ExtractPCS> CircuitRepresentation<PCS> {
     }
 
     /// Increment the number of public inputs.
+    // CHANGED vs upstream: new method, counts public inputs as they are extracted.
     pub(crate) fn increment_public_inputs(&mut self) {
         self.public_inputs += 1;
     }
 
     /// Extract the permutation evaluation step to the circuit representation.
-    pub(crate) fn extract_permutation_eval(&mut self, subscript: char) -> () {
+    pub(crate) fn extract_permutation_eval(&mut self, subscript: char) {
         self.proof_extraction_steps
             .push(ProofExtractionSteps::PermutationEval(subscript))
     }
 
     /// Extract most proof steps to the circuit representation.
-    pub(crate) fn extract_step(&mut self, step: ProofExtractionSteps) -> () {
+    pub(crate) fn extract_step(&mut self, step: ProofExtractionSteps) {
         match step {
             ProofExtractionSteps::PermutationEval(_) => panic!("Not supported"),
             ProofExtractionSteps::AdviceCommitments => self
@@ -97,6 +100,11 @@ impl<PCS: ExtractPCS> CircuitRepresentation<PCS> {
             ProofExtractionSteps::SqueezeChallenge => self
                 .proof_extraction_steps
                 .push(ProofExtractionSteps::SqueezeChallenge),
+            // CHANGED vs upstream: added handling for the Midnight-specific steps
+            // InstanceEval / TrashCommitment / TrashEval / TrashChallenge.
+            ProofExtractionSteps::InstanceEval => self
+                .proof_extraction_steps
+                .push(ProofExtractionSteps::InstanceEval),
             ProofExtractionSteps::AdviceEval => self
                 .proof_extraction_steps
                 .push(ProofExtractionSteps::AdviceEval),
@@ -118,6 +126,12 @@ impl<PCS: ExtractPCS> CircuitRepresentation<PCS> {
             ProofExtractionSteps::LookupEval => self
                 .proof_extraction_steps
                 .push(ProofExtractionSteps::LookupEval),
+            ProofExtractionSteps::TrashCommitment => self
+                .proof_extraction_steps
+                .push(ProofExtractionSteps::TrashCommitment),
+            ProofExtractionSteps::TrashEval => self
+                .proof_extraction_steps
+                .push(ProofExtractionSteps::TrashEval),
             ProofExtractionSteps::VanishingRand => self
                 .proof_extraction_steps
                 .push(ProofExtractionSteps::VanishingRand),
@@ -127,6 +141,9 @@ impl<PCS: ExtractPCS> CircuitRepresentation<PCS> {
             ProofExtractionSteps::VanishingSplit => self
                 .proof_extraction_steps
                 .push(ProofExtractionSteps::VanishingSplit),
+            ProofExtractionSteps::TrashChallenge => self
+                .proof_extraction_steps
+                .push(ProofExtractionSteps::TrashChallenge),
             ProofExtractionSteps::XCoordinate => self
                 .proof_extraction_steps
                 .push(ProofExtractionSteps::XCoordinate),

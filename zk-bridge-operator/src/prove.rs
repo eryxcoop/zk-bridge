@@ -1,15 +1,15 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use anyhow::{Context, Result, anyhow, bail};
+use anyhow::{anyhow, bail, Context, Result};
 use mithril_snapshot_circuit::legacy_tx_witness_from_proof_hex;
 use serde::Serialize;
-use tx_set_update_circuit::{TX_ID_BYTES, single_insert_empty_tree_witness};
+use tx_set_update_circuit::{single_insert_empty_tree_witness, TX_ID_BYTES};
 
 use crate::config::{ResolvedCli, TxProveArgs};
 use crate::io::{ensure_dir, write_pretty_json};
 use crate::mithril_api::MithrilApi;
-use crate::targets::{CircuitKind, proof_targets};
+use crate::targets::{proof_targets, CircuitKind};
 
 #[derive(Debug, Serialize)]
 struct ProofManifest {
@@ -23,7 +23,7 @@ struct ProofManifest {
 
 pub async fn prove_transaction(cli: &ResolvedCli, args: &TxProveArgs) -> Result<()> {
     let tx_hash = normalize_tx_hash(&args.transaction_hash)?;
-    let output_dir = cli.tx_artifacts_dir.join(&tx_hash);
+    let output_dir = cli.proven_transactions_dir.join(&tx_hash);
     if output_dir.exists() && !cli.force {
         bail!(
             "output directory {} already exists; rerun with --force to overwrite",
@@ -163,7 +163,7 @@ fn normalize_tx_hash(tx_hash: &str) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::targets::{CircuitKind, proof_targets};
+    use crate::targets::{proof_targets, CircuitKind};
 
     #[test]
     fn normalize_tx_hash_accepts_prefixed_mixed_case() {

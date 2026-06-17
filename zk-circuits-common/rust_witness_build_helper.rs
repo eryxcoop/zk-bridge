@@ -6,7 +6,7 @@ fn file_contents_match(left: &std::path::Path, right: &std::path::Path) -> bool 
 }
 
 pub fn transpile_circom_wasm_alias(wrapper_stem: &str) {
-    let wasm_dir = std::path::Path::new("./groth16_artifacts").join(format!("{wrapper_stem}_js"));
+    let wasm_dir = std::path::Path::new("./circuit_build").join(format!("{wrapper_stem}_js"));
     let original_wasm = wasm_dir.join(format!("{wrapper_stem}.wasm"));
 
     if original_wasm.exists() {
@@ -29,7 +29,7 @@ pub fn transpile_circom_wasm_alias(wrapper_stem: &str) {
         rust_witness::transpile::transpile_wasm(alias_dir.display().to_string());
     } else {
         println!(
-            "cargo:warning=missing Circom wasm file at {}; run scripts/build_groth16_artifacts.sh before building arkworks probes",
+            "cargo:warning=missing Circom wasm file at {}; run scripts/build_circuit.sh before building arkworks probes",
             original_wasm.display()
         );
     }

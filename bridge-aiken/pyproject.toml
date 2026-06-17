@@ -1,0 +1,11 @@
+[project]
+name = "bridge-aiken-scripts"
+version = "0.1.0"
+description = "Python helpers for bridge-aiken operational scripts"
+requires-python = ">=3.10"
+dependencies = [
+  "cbor2",
+]
+
+[tool.uv]
+package = false

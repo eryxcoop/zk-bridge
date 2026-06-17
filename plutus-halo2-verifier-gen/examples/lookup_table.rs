@@ -24,7 +24,7 @@ use halo2_proofs::{
 
 use plutus_halo2_verifier_gen::plutus_gen::{
     CardanoFriendlyBlake2b, ExtractPCS, export_proof, export_public_inputs,
-    generate_aiken_verifier, generate_plinth_verifier, serialize_proof,
+    generate_aiken_verifier,
 };
 use plutus_halo2_verifier_gen::{
     circuits::lookup_table_circuit::LookupTest, kzg_params::get_or_create_kzg_params,
@@ -87,7 +87,7 @@ pub fn compile_lookup_table_circuit<
     create_proof(
         &kzg_params,
         &pk,
-        &[circuit.clone()],
+        std::slice::from_ref(&circuit),
         instances,
         &mut rng,
         &mut transcript,
@@ -113,33 +113,13 @@ pub fn compile_lookup_table_circuit<
     create_proof(
         &kzg_params,
         &pk,
-        &[circuit.clone()],
+        std::slice::from_ref(&circuit),
         &[&[&[Base::from(1u64), Base::from(1u64), Base::from(1u64)]]],
         &mut rng,
         &mut invalid_transcript,
     )
     .context("proof generation should not fail")?;
     let invalid_proof = invalid_transcript.finalize();
-
-    let instances_file =
-        "./plinth-verifier/plutus-halo2/test/Generic/serialized_public_input.hex".to_string();
-    let mut output = File::create(instances_file).context("failed to create instances file")?;
-    export_public_inputs(instances, &mut output).context("failed to export public inputs")?;
-
-    serialize_proof(
-        "./plinth-verifier/plutus-halo2/test/Generic/serialized_proof.json".to_string(),
-        proof.clone(),
-    )
-    .context("json proof serialization failed")?;
-
-    export_proof(
-        "./plinth-verifier/plutus-halo2/test/Generic/serialized_proof.hex".to_string(),
-        proof.clone(),
-    )
-    .context("hex proof serialization failed")?;
-
-    generate_plinth_verifier(&kzg_params, &vk, instances)
-        .context("Plinth verifier generation failed")?;
 
     generate_aiken_verifier(
         &kzg_params,

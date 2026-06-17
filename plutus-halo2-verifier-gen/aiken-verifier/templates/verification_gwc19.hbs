@@ -1,6 +1,12 @@
 use aiken/collection/list.{last, foldl, take}
 use aiken/crypto/bitwise.{State}
-use aiken/crypto/bls12_381/g1.{add as addG1, scale as scaleG1, zero, decompress, compress}
+{{!-- CHANGED vs upstream: the generated MSM code now computes -G inline as
+     `bls12_381_g1_neg(generator)` (the `-G` MSM term, emitted by the generator,
+     not visible in this literal template), replacing the precomputed
+     `neg_g1_generator` import from verifier_key. The `bls_utils` MSM helpers and
+     the unused `zero`/`compress` g1 imports are dropped accordingly. --}}
+use aiken/builtin.{bls12_381_g1_neg}
+use aiken/crypto/bls12_381/g1.{add as addG1, scale as scaleG1, generator, decompress}
 use aiken/crypto/bls12_381/g2.{generator as generatorG2}
 use aiken/crypto/bls12_381/scalar.{
   Scalar, add, from_int, mul, neg, scale, sub
@@ -12,8 +18,7 @@ use transcript.{
   common_scalar, construct_transcript, read_point, read_scalar,
   squeeze_challenge,
 }
-use verifier_key.{barycentric_weight, blinding_factors, omega, omega_inv, g2_const, neg_g1_generator, transcript_rep, {{{F_IMPORTS}}}, {{{P_IMPORTS}}} }
-use bls_utils.{eval, MSM, MSMElement}
+use verifier_key.{barycentric_weight, blinding_factors, omega, omega_inv, g2_const, transcript_rep, {{{F_IMPORTS}}}, {{{P_IMPORTS}}} }
 use aiken/crypto/bls12_381/pairing.{miller_loop, final_exponentiation}
 
 pub fn verifier(proof: Data, {{{PUBLIC_INPUTS_NAMES}}}) -> Bool {
@@ -99,7 +104,9 @@ pub fn verifier(proof: Data, {{{PUBLIC_INPUTS_NAMES}}}) -> Bool {
     // vanishing split IS PASSED IN REVERSE ORDER!!!
     // this is MSM done for h-commitments
 {{{H_COMMITMENTS}}}
-    let vanishing_g = compress(vanishing_g) // we need to compress it back to pass it forward
+    {{!-- CHANGED vs upstream: removed the trailing
+         `let vanishing_g = compress(vanishing_g)` re-compression step; the
+         computed `vanishing_g` is consumed directly here. --}}
 
     // Pre-compute powers of `v` and `u` for MSM
     // Note that `v^0` and `u^0` are directly substituted with `scalarOne` in MSM

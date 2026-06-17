@@ -1,0 +1,550 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/plutus-halo2-verifier-gen/schemas/mithril_stm_proof_export.schema.json",
+  "title": "Mithril STM Proof Export",
+  "description": "Canonical proof export for bridge-aiken consumption.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "source_bundle",
+    "generator",
+    "statement",
+    "proof",
+    "phase1_state",
+    "reduced_redeemer",
+    "certificates",
+    "bridge_aiken"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "source_bundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bundle_schema_version",
+        "bundle_kind",
+        "source_id"
+      ],
+      "properties": {
+        "bundle_schema_version": {
+          "const": "1.0.0"
+        },
+        "bundle_kind": {
+          "const": "mithril_stm_bundle"
+        },
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bundle_hash_hex": {
+          "$ref": "#/$defs/hexBytes"
+        }
+      }
+    },
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repo",
+        "circuit",
+        "proof_export_schema_version"
+      ],
+      "properties": {
+        "repo": {
+          "const": "plutus-halo2-verifier-gen"
+        },
+        "circuit": {
+          "const": "mithril_stm"
+        },
+        "proof_export_schema_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "statement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "public_input_1",
+        "public_input_2",
+        "statement_hash"
+      ],
+      "properties": {
+        "public_input_1": {
+          "$ref": "#/$defs/bytes32"
+        },
+        "public_input_2": {
+          "$ref": "#/$defs/bytes32"
+        },
+        "statement_hash": {
+          "$ref": "#/$defs/bytes32"
+        }
+      }
+    },
+    "proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "proof_bytes"
+      ],
+      "properties": {
+        "proof_bytes": {
+          "$ref": "#/$defs/hexBytes"
+        }
+      }
+    },
+    "phase1_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rhs_prefix",
+        "reduced_hash",
+        "x1",
+        "x3",
+        "x4",
+        "v"
+      ],
+      "properties": {
+        "rhs_prefix": {
+          "$ref": "#/$defs/hexBytes"
+        },
+        "reduced_hash": {
+          "$ref": "#/$defs/bytes32"
+        },
+        "x1": {
+          "$ref": "#/$defs/bytes32"
+        },
+        "x3": {
+          "$ref": "#/$defs/bytes32"
+        },
+        "x4": {
+          "$ref": "#/$defs/bytes32"
+        },
+        "v": {
+          "$ref": "#/$defs/bytes32"
+        }
+      }
+    },
+    "reduced_redeemer": {
+      "$ref": "#/$defs/reducedRedeemer"
+    },
+    "certificates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "parent",
+        "child"
+      ],
+      "properties": {
+        "parent": {
+          "$ref": "#/$defs/normalizedCertificate"
+        },
+        "child": {
+          "$ref": "#/$defs/normalizedCertificate"
+        }
+      }
+    },
+    "bridge_aiken": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "phase1",
+        "phase2"
+      ],
+      "properties": {
+        "phase1": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "proof_bytes",
+            "public_input_1",
+            "public_input_2",
+            "phase1_state_rhs_prefix",
+            "phase1_state_reduced_hash",
+            "phase1_state_x1",
+            "phase1_state_x3",
+            "phase1_state_x4",
+            "phase1_state_v",
+            "statement_hash_value"
+          ],
+          "properties": {
+            "proof_bytes": {
+              "$ref": "#/$defs/hexBytes"
+            },
+            "public_input_1": {
+              "$ref": "#/$defs/bytes32"
+            },
+            "public_input_2": {
+              "$ref": "#/$defs/bytes32"
+            },
+            "phase1_state_rhs_prefix": {
+              "$ref": "#/$defs/hexBytes"
+            },
+            "phase1_state_reduced_hash": {
+              "$ref": "#/$defs/bytes32"
+            },
+            "phase1_state_x1": {
+              "$ref": "#/$defs/bytes32"
+            },
+            "phase1_state_x3": {
+              "$ref": "#/$defs/bytes32"
+            },
+            "phase1_state_x4": {
+              "$ref": "#/$defs/bytes32"
+            },
+            "phase1_state_v": {
+              "$ref": "#/$defs/bytes32"
+            },
+            "statement_hash_value": {
+              "$ref": "#/$defs/bytes32"
+            }
+          }
+        },
+        "phase2": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "token_name",
+            "proof_receipt_statement_hash",
+            "reduced_redeemer_vanishing_g",
+            "reduced_redeemer_vanishing_rand",
+            "reduced_redeemer_a1",
+            "reduced_redeemer_a2",
+            "reduced_redeemer_a3",
+            "reduced_redeemer_perm_d",
+            "reduced_redeemer_lookup_1",
+            "reduced_redeemer_lookup_2",
+            "reduced_redeemer_perm_a",
+            "reduced_redeemer_perm_b",
+            "reduced_redeemer_perm_c",
+            "reduced_redeemer_perm_input_1",
+            "reduced_redeemer_perm_input_2",
+            "reduced_redeemer_f_commitment",
+            "reduced_redeemer_pi_term"
+          ],
+          "properties": {
+            "token_name": {
+              "$ref": "#/$defs/bytes32"
+            },
+            "proof_receipt_statement_hash": {
+              "$ref": "#/$defs/bytes32"
+            },
+            "reduced_redeemer_vanishing_g": {
+              "$ref": "#/$defs/hexBytes"
+            },
+            "reduced_redeemer_vanishing_rand": {
+              "$ref": "#/$defs/hexBytes"
+            },
+            "reduced_redeemer_a1": {
+              "$ref": "#/$defs/hexBytes"
+            },
+            "reduced_redeemer_a2": {
+              "$ref": "#/$defs/hexBytes"
+            },
+            "reduced_redeemer_a3": {
+              "$ref": "#/$defs/hexBytes"
+            },
+            "reduced_redeemer_perm_d": {
+              "$ref": "#/$defs/hexBytes"
+            },
+            "reduced_redeemer_lookup_1": {
+              "$ref": "#/$defs/hexBytes"
+            },
+            "reduced_redeemer_lookup_2": {
+              "$ref": "#/$defs/hexBytes"
+            },
+            "reduced_redeemer_perm_a": {
+              "$ref": "#/$defs/hexBytes"
+            },
+            "reduced_redeemer_perm_b": {
+              "$ref": "#/$defs/hexBytes"
+            },
+            "reduced_redeemer_perm_c": {
+              "$ref": "#/$defs/hexBytes"
+            },
+            "reduced_redeemer_perm_input_1": {
+              "$ref": "#/$defs/hexBytes"
+            },
+            "reduced_redeemer_perm_input_2": {
+              "$ref": "#/$defs/hexBytes"
+            },
+            "reduced_redeemer_f_commitment": {
+              "$ref": "#/$defs/hexBytes"
+            },
+            "reduced_redeemer_pi_term": {
+              "$ref": "#/$defs/hexBytes"
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "hexBytes": {
+      "type": "string",
+      "pattern": "^0x([0-9a-f]{2})*$"
+    },
+    "bytes32": {
+      "type": "string",
+      "pattern": "^0x[0-9a-f]{64}$"
+    },
+    "signatureInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "bytes_hex"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "genesis",
+            "multi"
+          ]
+        },
+        "bytes_hex": {
+          "$ref": "#/$defs/hexBytes"
+        }
+      }
+    },
+    "signedEntity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "mithril_stake_distribution",
+            "cardano_transactions",
+            "unknown"
+          ]
+        },
+        "epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "block_number": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "protocolParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "k",
+        "m",
+        "phi_f"
+      ],
+      "properties": {
+        "k": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "m": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "phi_f": {
+          "$ref": "#/$defs/hexBytes"
+        }
+      }
+    },
+    "protocolMessage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "current_epoch_text",
+        "next_aggregate_verification_key_text",
+        "next_aggregate_verification_key_snark_text",
+        "next_protocol_parameters_text"
+      ],
+      "properties": {
+        "current_epoch_text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "next_aggregate_verification_key_text": {
+          "type": "string"
+        },
+        "next_aggregate_verification_key_snark_text": {
+          "type": "string"
+        },
+        "next_protocol_parameters_text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cardano_transactions_merkle_root_hex": {
+          "$ref": "#/$defs/hexBytes"
+        }
+      }
+    },
+    "certificateMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "network",
+        "protocol_version",
+        "initiated_at",
+        "sealed_at"
+      ],
+      "properties": {
+        "network": {
+          "type": "string",
+          "minLength": 1
+        },
+        "protocol_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "initiated_at": {
+          "$ref": "#/$defs/hexBytes"
+        },
+        "sealed_at": {
+          "$ref": "#/$defs/hexBytes"
+        }
+      }
+    },
+    "normalizedCertificate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "hash",
+        "prev_hash",
+        "epoch",
+        "metadata",
+        "protocol_parameters",
+        "protocol_message",
+        "signed_message",
+        "aggregate_verification_key_text",
+        "aggregate_verification_key_snark_text",
+        "signature",
+        "signed_entity"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "genesis",
+            "standard"
+          ]
+        },
+        "hash": {
+          "$ref": "#/$defs/bytes32"
+        },
+        "prev_hash": {
+          "$ref": "#/$defs/hexBytes"
+        },
+        "epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "metadata": {
+          "$ref": "#/$defs/certificateMetadata"
+        },
+        "protocol_parameters": {
+          "$ref": "#/$defs/protocolParameters"
+        },
+        "protocol_message": {
+          "$ref": "#/$defs/protocolMessage"
+        },
+        "signed_message": {
+          "$ref": "#/$defs/bytes32"
+        },
+        "aggregate_verification_key_text": {
+          "type": "string"
+        },
+        "aggregate_verification_key_snark_text": {
+          "type": "string"
+        },
+        "signature": {
+          "$ref": "#/$defs/signatureInfo"
+        },
+        "signed_entity": {
+          "$ref": "#/$defs/signedEntity"
+        }
+      }
+    },
+    "reducedRedeemer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "vanishing_g",
+        "vanishing_rand",
+        "a1",
+        "a2",
+        "a3",
+        "perm_d",
+        "lookup_1",
+        "lookup_2",
+        "perm_a",
+        "perm_b",
+        "perm_c",
+        "perm_input_1",
+        "perm_input_2",
+        "f_commitment",
+        "pi_term"
+      ],
+      "properties": {
+        "vanishing_g": {
+          "$ref": "#/$defs/hexBytes"
+        },
+        "vanishing_rand": {
+          "$ref": "#/$defs/hexBytes"
+        },
+        "a1": {
+          "$ref": "#/$defs/hexBytes"
+        },
+        "a2": {
+          "$ref": "#/$defs/hexBytes"
+        },
+        "a3": {
+          "$ref": "#/$defs/hexBytes"
+        },
+        "perm_d": {
+          "$ref": "#/$defs/hexBytes"
+        },
+        "lookup_1": {
+          "$ref": "#/$defs/hexBytes"
+        },
+        "lookup_2": {
+          "$ref": "#/$defs/hexBytes"
+        },
+        "perm_a": {
+          "$ref": "#/$defs/hexBytes"
+        },
+        "perm_b": {
+          "$ref": "#/$defs/hexBytes"
+        },
+        "perm_c": {
+          "$ref": "#/$defs/hexBytes"
+        },
+        "perm_input_1": {
+          "$ref": "#/$defs/hexBytes"
+        },
+        "perm_input_2": {
+          "$ref": "#/$defs/hexBytes"
+        },
+        "f_commitment": {
+          "$ref": "#/$defs/hexBytes"
+        },
+        "pi_term": {
+          "$ref": "#/$defs/hexBytes"
+        }
+      }
+    }
+  }
+}

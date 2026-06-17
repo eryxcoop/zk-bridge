@@ -1,0 +1,416 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/plutus-halo2-verifier-gen/schemas/mithril_stm_bundle.schema.json",
+  "title": "Mithril STM Bundle",
+  "description": "Normalized input bundle for generating a Mithril STM proof export.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "bundle_kind",
+    "source",
+    "circuit",
+    "stm_parameters",
+    "certificates",
+    "statement",
+    "registration",
+    "witness"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "bundle_kind": {
+      "const": "mithril_stm_bundle"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "source_kind",
+        "network"
+      ],
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_kind": {
+          "type": "string",
+          "enum": [
+            "fixture",
+            "normalized_mithril_bundle",
+            "exported_api_payload"
+          ]
+        },
+        "network": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generated_at": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "circuit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "public_input_contract"
+      ],
+      "properties": {
+        "name": {
+          "const": "mithril_stm"
+        },
+        "public_input_contract": {
+          "const": "public_input_1=registration_merkle_root,public_input_2=child_certificate.signed_message"
+        }
+      }
+    },
+    "stm_parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "m",
+        "k",
+        "phi_f"
+      ],
+      "properties": {
+        "m": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "k": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "phi_f": {
+          "$ref": "#/$defs/hexBytes"
+        }
+      }
+    },
+    "certificates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "parent",
+        "child"
+      ],
+      "properties": {
+        "parent": {
+          "$ref": "#/$defs/normalizedCertificate"
+        },
+        "child": {
+          "$ref": "#/$defs/normalizedCertificate"
+        }
+      }
+    },
+    "statement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "public_input_1_merkle_root",
+        "public_input_2_signed_message"
+      ],
+      "properties": {
+        "public_input_1_merkle_root": {
+          "$ref": "#/$defs/bytes32"
+        },
+        "public_input_2_signed_message": {
+          "$ref": "#/$defs/bytes32"
+        }
+      }
+    },
+    "registration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total_stake",
+        "parties_count",
+        "merkle_tree_depth"
+      ],
+      "properties": {
+        "total_stake": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "parties_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "merkle_tree_depth": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "witness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entries"
+      ],
+      "properties": {
+        "entries": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/witnessEntry"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "hexBytes": {
+      "type": "string",
+      "pattern": "^0x([0-9a-f]{2})*$"
+    },
+    "bytes32": {
+      "type": "string",
+      "pattern": "^0x[0-9a-f]{64}$"
+    },
+    "merklePath": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "leaf_index",
+        "siblings"
+      ],
+      "properties": {
+        "leaf_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "siblings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/bytes32"
+          }
+        }
+      }
+    },
+    "signatureInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "bytes_hex"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "genesis",
+            "multi"
+          ]
+        },
+        "bytes_hex": {
+          "$ref": "#/$defs/hexBytes"
+        }
+      }
+    },
+    "signedEntity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "mithril_stake_distribution",
+            "cardano_transactions",
+            "unknown"
+          ]
+        },
+        "epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "block_number": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "protocolParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "k",
+        "m",
+        "phi_f"
+      ],
+      "properties": {
+        "k": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "m": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "phi_f": {
+          "$ref": "#/$defs/hexBytes"
+        }
+      }
+    },
+    "protocolMessage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "current_epoch_text",
+        "next_aggregate_verification_key_text",
+        "next_aggregate_verification_key_snark_text",
+        "next_protocol_parameters_text"
+      ],
+      "properties": {
+        "current_epoch_text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "next_aggregate_verification_key_text": {
+          "type": "string"
+        },
+        "next_aggregate_verification_key_snark_text": {
+          "type": "string"
+        },
+        "next_protocol_parameters_text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cardano_transactions_merkle_root_hex": {
+          "$ref": "#/$defs/hexBytes"
+        }
+      }
+    },
+    "certificateMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "network",
+        "protocol_version",
+        "initiated_at",
+        "sealed_at"
+      ],
+      "properties": {
+        "network": {
+          "type": "string",
+          "minLength": 1
+        },
+        "protocol_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "initiated_at": {
+          "$ref": "#/$defs/hexBytes"
+        },
+        "sealed_at": {
+          "$ref": "#/$defs/hexBytes"
+        }
+      }
+    },
+    "normalizedCertificate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "hash",
+        "prev_hash",
+        "epoch",
+        "metadata",
+        "protocol_parameters",
+        "protocol_message",
+        "signed_message",
+        "aggregate_verification_key_text",
+        "aggregate_verification_key_snark_text",
+        "signature",
+        "signed_entity"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "genesis",
+            "standard"
+          ]
+        },
+        "hash": {
+          "$ref": "#/$defs/bytes32"
+        },
+        "prev_hash": {
+          "$ref": "#/$defs/hexBytes"
+        },
+        "epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "metadata": {
+          "$ref": "#/$defs/certificateMetadata"
+        },
+        "protocol_parameters": {
+          "$ref": "#/$defs/protocolParameters"
+        },
+        "protocol_message": {
+          "$ref": "#/$defs/protocolMessage"
+        },
+        "signed_message": {
+          "$ref": "#/$defs/bytes32"
+        },
+        "aggregate_verification_key_text": {
+          "type": "string"
+        },
+        "aggregate_verification_key_snark_text": {
+          "type": "string"
+        },
+        "signature": {
+          "$ref": "#/$defs/signatureInfo"
+        },
+        "signed_entity": {
+          "$ref": "#/$defs/signedEntity"
+        }
+      }
+    },
+    "witnessEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signer_index",
+        "lottery_index",
+        "verification_key_snark",
+        "target",
+        "merkle_path",
+        "unique_schnorr_signature"
+      ],
+      "properties": {
+        "signer_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lottery_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "verification_key_snark": {
+          "$ref": "#/$defs/hexBytes"
+        },
+        "target": {
+          "$ref": "#/$defs/bytes32"
+        },
+        "merkle_path": {
+          "$ref": "#/$defs/merklePath"
+        },
+        "unique_schnorr_signature": {
+          "$ref": "#/$defs/hexBytes"
+        }
+      }
+    }
+  }
+}

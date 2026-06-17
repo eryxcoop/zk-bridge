@@ -8,5 +8,7 @@ pub struct CommitmentData {
     pub(crate) commitment: Commitments,
     pub(crate) point_set_index: usize,
     pub(crate) evaluations: Vec<Evaluations>,
-    pub(crate) points: Vec<RotationDescription>,
+    // CHANGED vs upstream: dropped the `points: Vec<RotationDescription>` field.
+    // Point sets are now resolved by index in `precompute_intermediate_sets`
+    // (see pcs/mod.rs), so the per-commitment rotation list is redundant.
 }

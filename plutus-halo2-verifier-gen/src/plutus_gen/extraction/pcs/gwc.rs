@@ -43,12 +43,6 @@ impl ExtractPCS for GWC19Scheme {
         "".to_string()
     }
 
-    fn pcs_data_plinth(circuit_repr: &CircuitRepresentation<Self>) -> String {
-        (1..=circuit_repr.pcs_instantiation_data.w_values_count)
-            .map(|n| format!("              'w{}", n))
-            .join(" ,\n")
-    }
-
     fn extract_pcs(circuit_repr: &mut CircuitRepresentation<Self>) {
         circuit_repr.pcs_extraction_steps.push(GWC19Steps::V);
 
@@ -58,7 +52,7 @@ impl ExtractPCS for GWC19Scheme {
             .all_ordered()
             .iter()
             .flatten()
-            .map(|q| q.point.clone())
+            .map(|q| q.point)
             .unique()
             .count();
 
@@ -86,12 +80,6 @@ impl ExtractPCS for GWC19Scheme {
             ),
         }
     }
-
-    fn step_to_plinth(step: Self::PCSExtractionSteps, number: usize) -> String {
-        match step {
-            GWC19Steps::U => "  !u <- M.squeezeChallenge\n".to_string(),
-            GWC19Steps::V => "  !v <- M.squeezeChallenge\n".to_string(),
-            GWC19Steps::Witnesses => format!("  !w{} <- M.readPoint\n", number),
-        }
-    }
+    // CHANGED vs upstream: removed the Plinth emitter methods `pcs_data_plinth`
+    // and `step_to_plinth` (the subrepo is Aiken-only now, see point 2).
 }

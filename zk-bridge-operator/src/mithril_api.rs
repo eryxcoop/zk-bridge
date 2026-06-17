@@ -1,7 +1,9 @@
 use std::collections::BTreeMap;
 
-use anyhow::{Context, Result, anyhow, bail, ensure};
-use mithril_client::{ClientBuilder, MessageBuilder};
+use anyhow::{anyhow, bail, ensure, Context, Result};
+use mithril_client::{
+    AggregatorDiscoveryType, ClientBuilder, GenesisVerificationKey, MessageBuilder,
+};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -61,6 +63,14 @@ pub struct CardanoTransactionSnapshotListItem {
     pub merkle_root: String,
     pub epoch: u64,
     pub block_number: u64,
+    pub hash: String,
+    pub certificate_hash: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CardanoStakeDistributionListItem {
+    pub epoch: u64,
     pub hash: String,
     pub certificate_hash: String,
     pub created_at: String,
@@ -128,11 +138,15 @@ impl MithrilApi {
     }
 
     pub async fn aggregator_features(&self) -> Result<AggregatorFeatures> {
-        self.get_json("/").await.context("fetching aggregator features")
+        self.get_json("/")
+            .await
+            .context("fetching aggregator features")
     }
 
     pub async fn aggregator_status(&self) -> Result<AggregatorStatus> {
-        self.get_json("/status").await.context("fetching aggregator status")
+        self.get_json("/status")
+            .await
+            .context("fetching aggregator status")
     }
 
     pub async fn genesis_certificate(&self) -> Result<CertificateMessage> {
@@ -159,6 +173,14 @@ impl MithrilApi {
         self.get_json("/artifact/cardano-transactions")
             .await
             .context("fetching cardano transaction snapshots")
+    }
+
+    pub async fn cardano_stake_distributions(
+        &self,
+    ) -> Result<Vec<CardanoStakeDistributionListItem>> {
+        self.get_json("/artifact/cardano-stake-distributions")
+            .await
+            .context("fetching cardano stake distributions")
     }
 
     pub async fn cardano_transaction_snapshot(
@@ -231,7 +253,10 @@ impl MithrilApi {
             .into_iter()
             .find(|snapshot| snapshot.certificate_hash == certificate_hash);
         match item {
-            Some(item) => self.cardano_transaction_snapshot(&item.hash).await.map(Some),
+            Some(item) => self
+                .cardano_transaction_snapshot(&item.hash)
+                .await
+                .map(Some),
             None => Ok(None),
         }
     }
@@ -241,7 +266,9 @@ impl MithrilApi {
             .protocol_message
             .message_parts
             .get("cardano_transactions_merkle_root")
-            .ok_or_else(|| anyhow!("certificate does not expose cardano_transactions_merkle_root"))?;
+            .ok_or_else(|| {
+                anyhow!("certificate does not expose cardano_transactions_merkle_root")
+            })?;
         let bytes = hex::decode(root)
             .with_context(|| "cardano_transactions_merkle_root is not valid hex")?;
         ensure!(bytes.len() == 32, "expected 32-byte cardano tx merkle root");
@@ -263,15 +290,19 @@ impl MithrilApi {
         tx_hash: &str,
         expected_certificate_hash: &str,
     ) -> Result<()> {
-        let client = ClientBuilder::aggregator(&self.aggregator_url, genesis_verification_key)
+        let client = ClientBuilder::new(AggregatorDiscoveryType::Url(self.aggregator_url.clone()))
+            .set_genesis_verification_key(GenesisVerificationKey::JsonHex(
+                genesis_verification_key.to_string(),
+            ))
             .build()
             .context("building mithril client")?;
 
-        let cardano_transaction_proof = client
-            .cardano_transaction()
-            .get_proofs(&[tx_hash])
-            .await
-            .with_context(|| format!("requesting verifiable proof for {tx_hash}"))?;
+        let cardano_transaction_proof =
+            client
+                .cardano_transaction()
+                .get_proofs(&[tx_hash])
+                .await
+                .with_context(|| format!("requesting verifiable proof for {tx_hash}"))?;
         let verified_transactions = cardano_transaction_proof
             .verify()
             .context("verifying Mithril transaction proof")?;

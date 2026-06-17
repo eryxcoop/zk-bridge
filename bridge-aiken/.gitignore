@@ -1,0 +1,37 @@
+# bridge.sh run outputs
+run_outputs/
+# Aiken's project working directory
+build/
+# Aiken's default documentation export
+docs/
+# NodeJS modules folder
+node_modules/
+# Tx3 artifacts
+.tx3/
+gen/rust-client/target/
+# Environment variables
+.env
+# Secret key
+me.sk
+# Address
+me.addr
+# Package lock
+package-lock.json
+#Aiken lock
+aiken.lock
+
+# Ceremony outputs
+circuits/*.ptau
+
+.agents/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+.omx/
+.venv/
+
+# Repo-local tooling bootstrapped by scripts/bootstrap_dev_env.sh
+.tools/bin/
+.tools/env.sh

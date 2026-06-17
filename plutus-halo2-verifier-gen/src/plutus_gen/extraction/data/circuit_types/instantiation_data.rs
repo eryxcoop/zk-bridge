@@ -18,6 +18,14 @@ use log::info;
 pub(crate) struct InstantiationSpecificData {
     pub(crate) fixed_commitments: Vec<G1Affine>,
     pub(crate) permutation_commitments: Vec<G1Affine>,
+    // CHANGED vs upstream: added for Midnight support — committed-instance
+    // commitments and the per-column lengths / query columns / query rotations
+    // needed to handle the STM circuit's multiple, variable-length instance
+    // columns (upstream assumed a single flat instance column).
+    pub(crate) committed_instance_commitments: Vec<G1Affine>,
+    pub(crate) instance_column_lengths: Vec<usize>,
+    pub(crate) instance_query_columns: Vec<usize>,
+    pub(crate) instance_query_rotations: Vec<i32>,
     pub(crate) omega: Scalar,
     pub(crate) inverted_omega: Scalar,
     pub(crate) barycentric_weight: Scalar,
@@ -36,6 +44,8 @@ impl InstantiationSpecificData {
         &mut self,
         params: &ParamsKZG<Bls12>,
         vk: &VerifyingKey<Scalar, PCS>,
+        // CHANGED vs upstream `instances: &[Scalar]`: now nested
+        // (columns-of-columns) to model multiple instance columns.
         instances: &[&[&[Scalar]]],
         rotations: usize,
     ) where
@@ -52,6 +62,19 @@ impl InstantiationSpecificData {
             .commitments()
             .iter()
             .map(|p| p.to_affine())
+            .collect();
+        self.instance_column_lengths = instances[0].iter().map(|column| column.len()).collect();
+        self.instance_query_columns = vk
+            .cs()
+            .instance_queries()
+            .iter()
+            .map(|(column, _)| column.index() + 1)
+            .collect();
+        self.instance_query_rotations = vk
+            .cs()
+            .instance_queries()
+            .iter()
+            .map(|(_, rotation)| rotation.0)
             .collect();
 
         self.omega = vk.get_domain().get_omega();
@@ -71,6 +94,6 @@ impl InstantiationSpecificData {
 
         self.transcript_representation = vk.transcript_repr();
 
-        self.public_inputs_count = instances[0][0].len();
+        self.public_inputs_count = instances[0].iter().map(|column| column.len()).sum();
     }
 }

@@ -1,0 +1,24 @@
+{
+  "case_id": "mithril_upstream_deterministic_golden_v1",
+  "provenance": {
+    "upstream_repo": "input-output-hk/mithril",
+    "upstream_branch": "jpraynaud/3145-snark-friendly-genesis-certificate",
+    "upstream_commit": "fc22e26d669101c1edde1bd07bc03ed983e27740",
+    "verification_key_source": "mithril-stm/src/signature_scheme/schnorr_signature/verification_key.rs golden bytes",
+    "signature_source": "mithril-stm/src/signature_scheme/schnorr_signature/standard_signature.rs golden bytes",
+    "digest_source": "sha256([0u8; 32]) so that digest_to_field_element matches BaseFieldElement::try_from([0u8; 32])"
+  },
+  "raw_message_hex": "0000000000000000000000000000000000000000000000000000000000000000",
+  "sha256_digest_hex": "66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925",
+  "digest_to_field_reduction_changes_value": false,
+  "verification_key_hex": "ba1645a201437da068c5696dc822bac4ab9bbfb20b746c086ff92f2789373e3e90345fa17ffd31208cd9e7cf20eef4c461f12f5f65094688c242bbfdc820da2b",
+  "signature_hex": "591f8820bd8f557bf5c110659d4cab0e1adf9efbb25e9a9134e21c805bc2400d34d5faa061947998563477475f2b63b0fdfb5d39fdb4a6bf9a20beddecf85116",
+  "signature_split_hex": {
+    "response_hex": "591f8820bd8f557bf5c110659d4cab0e1adf9efbb25e9a9134e21c805bc2400d",
+    "challenge_hex": "34d5faa061947998563477475f2b63b0fdfb5d39fdb4a6bf9a20beddecf85116"
+  },
+  "verification_key_coordinates_le_hex": {
+    "u_hex": "ba1645a201437da068c5696dc822bac4ab9bbfb20b746c086ff92f2789373e3e",
+    "v_hex": "90345fa17ffd31208cd9e7cf20eef4c461f12f5f65094688c242bbfdc820da2b"
+  }
+}

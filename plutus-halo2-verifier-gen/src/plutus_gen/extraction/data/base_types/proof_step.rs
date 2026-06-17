@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 pub(crate) enum ProofExtractionSteps {
     // Advice and fixed column related steps
     AdviceCommitments,
+    // CHANGED vs upstream: added for Midnight support (committed-instance eval step).
+    InstanceEval,
     AdviceEval,
     FixedEval,
     // Lookup steps
@@ -18,12 +20,18 @@ pub(crate) enum ProofExtractionSteps {
     LookupPermuted,
     LookupCommitment,
     LookupEval,
+    // CHANGED vs upstream: added for Midnight support — trash-column commitment
+    // and evaluation steps.
+    TrashCommitment,
+    TrashEval,
     // Vanishing polynoial steps
     VanishingRand,
     RandomEval,
     VanishingSplit,
     // Challenges extraction
     SqueezeChallenge,
+    // CHANGED vs upstream: added for Midnight support (trash-column challenge).
+    TrashChallenge,
     XCoordinate,
     YCoordinate,
     Theta,

@@ -1,0 +1,17 @@
+{
+  "open_api_version": "0.1.61",
+  "documentation_url": "https://mithril.network",
+  "capabilities": {
+    "signed_entity_types": [
+      "MithrilStakeDistribution",
+      "CardanoStakeDistribution",
+      "CardanoImmutableFilesFull",
+      "CardanoDatabase",
+      "CardanoTransactions"
+    ],
+    "aggregate_signature_type": "Concatenation",
+    "cardano_transactions_prover": {
+      "max_hashes_allowed_by_request": 100
+    }
+  }
+}

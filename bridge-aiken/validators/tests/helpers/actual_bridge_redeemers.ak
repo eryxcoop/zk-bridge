@@ -1,0 +1,71 @@
+use bridge/common_types.{
+  LockingTxSourceOutputReference, TxsUpdaterValidatorRedeemer,
+}
+use cardano/address.{PaymentCredential}
+use env
+use minting.{MintingValidatorRedeemer}
+use tests/helpers/bridge_fixture
+use tests/helpers/bridge_locking_tx
+use tests/helpers/test_constants
+
+pub fn actual_bridge_mint_redeemer() -> MintingValidatorRedeemer {
+  let locking_tx_input_output_reference = bridge_fixture.actual_locking_tx_input_output_reference
+  let locking_tx_input_payment_credential = bridge_fixture.actual_locking_tx_input_payment_credential
+  let locking_tx_input_datum = bridge_fixture.actual_locking_tx_input_datum
+  let locking_tx_destination_address = bridge_fixture.actual_locking_tx_destination_address
+  let locking_tx_asset_amount = bridge_fixture.actual_locking_tx_asset_amount
+  let locking_tx_ada_amount = bridge_fixture.actual_locking_tx_ada_amount
+
+  MintingValidatorRedeemer {
+    tx_snapshot_certificate_hash: #"6c6f636b696e675f74785f63657274696669636174655f68617368",
+    tx_snapshot_certificate_prev_hash: #"30363230323864396137316562393137386461626530303138643136316435626336373733613333316333373539663866303536363137313832393633383766",
+    tx_snapshot_certificate_epoch: 1130,
+    tx_snapshot_certificate_protocol_parameters_k: 5,
+    tx_snapshot_certificate_protocol_parameters_m: 100,
+    tx_snapshot_certificate_protocol_parameters_phi_f: #"00a66666",
+    tx_snapshot_certificate_protocol_message_next_aggregate_verification_key: #"6e6578742d6167677265676174652d766572696669636174696f6e2d6b65792d31313531",
+    tx_snapshot_certificate_protocol_message_next_aggregate_verification_key_snark: #"736e61726b2d61766b2d31313531",
+    tx_snapshot_certificate_protocol_message_next_protocol_parameters: #"62303164653832636137653537633162663261353633383163653236356633373861656561356631646465376638323462356261343231323563346164616432",
+    tx_snapshot_certificate_protocol_message_current_epoch: #"31313330",
+    tx_snapshot_certificate_protocol_message_cardano_transactions_merkle_root: bridge_fixture.final_snapshot_root,
+    tx_snapshot_certificate_signed_message: #"0707070707070707070707070707070707070707070707070707070707070707",
+    tx_snapshot_certificate_aggregate_verification_key: #"3736323233363634333733343335363633363333333636363336363433363339333733343336363433363335333636353337333433323332333336313337363233323332333733323336363633363666333733343332333233333631333536323333333233333335333333353263333333313333333033333335326333313363333333313263333333323333333332633333333732633333333133333339333333393263333333373333333832633333333133333338333333353263333333363333333632633333333233333330333333393263333333313333333833333333326333333332333333303333333432633333333133333339333333333263333333313333333833333339326333333331333333373333333532633333333333333339333363333333353333333332633333333133333339333333393263333333313333333433333335326333333331333333383333333732633333333933333337326333333332333333343333333132633333333233333330333333303263333333323333333233333338326333333332333333323333333032633330333263333333313333333033333338326333333331333333363333333332633333333133333330333333373263333333313333333133333331326333333332333333303333333233353634333236333232333636353337333233353636363333363335333633313336363633363335333733333332333233333631333333313333333932633332333233363338333633313337333333363338333633353337333233323233336133363635333733353336363333363333376432633232373436663734363136633566373337343631366236353232336133313332333133303333333733383333333933303336333333353332333833303764",
+    tx_snapshot_certificate_aggregate_verification_key_snark: #"736e61726b2d61766b2d31313330",
+    tx_snapshot_certificate_signed_entity_is_stake_distribution: False,
+    tx_snapshot_certificate_signed_entity_epoch: 1130,
+    parent_certificate_hash: #"062028d9a71eb9178dabe0018d161d5bc6773a331c3759f8f05661718296387f",
+    parent_certificate_epoch: 1130,
+    parent_certificate_protocol_parameters_k: 5,
+    parent_certificate_protocol_parameters_m: 100,
+    parent_certificate_protocol_parameters_phi_f: #"00a66666",
+    parent_certificate_next_aggregate_verification_key_snark: #"736e61726b2d61766b2d31313331",
+    parent_certificate_aggregate_verification_key_snark: #"736e61726b2d61766b2d31313330",
+    locking_tx_merkle_proof_public_sub_root: bridge_fixture.final_sub_root,
+    locking_tx_merkle_proof_pi_a: bridge_fixture.final_snapshot_membership_proof().piA,
+    locking_tx_merkle_proof_pi_b: bridge_fixture.final_snapshot_membership_proof().piB,
+    locking_tx_merkle_proof_pi_c: bridge_fixture.final_snapshot_membership_proof().piC,
+    // Legacy compatibility field name: this is now the canonical Cardano tx hash.
+    locking_tx_hash: bridge_fixture.final_locking_tx_hash,
+    locking_tx_input_output_reference_tx_id: locking_tx_input_output_reference.transaction_id,
+    locking_tx_input_output_reference_output_index: locking_tx_input_output_reference.output_index,
+    locking_tx_input_payment_credential,
+    locking_tx_input_datum,
+    locking_tx_destination_payment_credential: bridge_locking_tx.payment_credential_bytes(
+      locking_tx_destination_address,
+    ),
+    locking_tx_asset_amount,
+    locking_tx_ada_amount,
+  }
+}
+
+pub fn actual_bridge_spend_redeemer() -> TxsUpdaterValidatorRedeemer {
+  let locked_assets_utxo_ref = test_constants.locked_assets_utxo_ref
+  TxsUpdaterValidatorRedeemer {
+    tx_id: actual_bridge_mint_redeemer().locking_tx_hash,
+    locked_assets_utxo_ref_tx_id: locked_assets_utxo_ref.transaction_id,
+    locked_assets_utxo_ref_output_index: locked_assets_utxo_ref.output_index,
+    tx_set_update_proof_pi_a: bridge_fixture.final_tx_set_update_proof().piA,
+    tx_set_update_proof_pi_b: bridge_fixture.final_tx_set_update_proof().piB,
+    tx_set_update_proof_pi_c: bridge_fixture.final_tx_set_update_proof().piC,
+  }
+}

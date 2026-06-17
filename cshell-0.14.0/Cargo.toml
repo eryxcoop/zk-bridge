@@ -1,0 +1,76 @@
+[package]
+name = "cshell"
+version = "0.14.0"
+edition = "2021"
+rust-version = "1.88.0"
+authors = ["TxPipe <hello@txpipe.io>"]
+description = "A Cardano wallet CLI built for developers."
+readme = "README.md"
+repository = "https://github.com/txpipe/cshell"
+license = "Apache-2.0"
+homepage = "https://docs.txpipe.io/cshell"
+
+keywords = ["cardano", "blockchain", "wallet"]
+categories = ["command-line-utilities", "blockchain", "cardano", "wallet"]
+
+[dependencies]
+tx3-sdk = "0.9.2"
+# tx3-sdk = { git = "https://github.com/tx3-lang/rust-sdk.git" }
+# tx3-sdk = { path = "../../tx3-lang/rust-sdk/sdk" }
+
+# utxorpc = { git = "https://github.com/utxorpc/rust-sdk" }
+utxorpc = "0.13.0"
+# utxorpc = { path = "../../utxorpc/rust-sdk" }
+
+bech32 = "0.11.1"
+bip39 = { version = "2.0.0", features = ["rand_core"] }
+chrono = { version = "0.4.39", features = ["serde"] }
+clap = { version = "4.5.29", features = ["derive", "env"] }
+comfy-table = "7.1.1"
+crossterm = { version = "0.28.1", features = ["event-stream"] }
+cryptoxide = "0.4.4"
+ed25519-bip32 = "0.4.1"
+futures = "0.3.31"
+hex = { version = "0.4.3", features = ["serde"] }
+inquire = "0.7.4"
+jsonrpsee = { version = "0", features = ["client"] }
+pallas = { version = "1.0.0-alpha.2", features = ["hardano"] }
+prost = "0.13.5"
+rand = "0.9.2"
+rand_core = { version = "0.9.3" }
+ratatui = "0.29.0"
+serde = { version = "1.0.217", features = ["derive"] }
+serde_with = "3.12.0"
+serde_json = "1.0.140"
+slug = "0.1.5"
+strum = { version = "0.27.1", features = ["derive"] }
+tokio = { version = "1.43.0", features = ["full"] }
+tokio-stream = "0.1.17"
+toml = "0.8.20"
+tracing = "0.1.41"
+tracing-subscriber = "0.3.19"
+
+url = { version = "2.5.0", features = ["serde"] }
+regex = "1.11.1"
+backoff = "0.4.0"
+indexmap = "2.10.0"
+num-format = "0.4.4"
+tui-tree-widget = "0.23.1"
+anyhow = "1.0.98"
+
+# The profile that 'cargo dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
+
+[workspace.metadata.release]
+push = false
+publish = false
+pre-release-hook = [
+    "git",
+    "cliff",
+    "-o",
+    "CHANGELOG.md",
+    "--tag",
+    "{{version}}",
+]

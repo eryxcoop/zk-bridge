@@ -200,7 +200,7 @@ Since `list.find` finds the first output between the ordered list `tx.outputs` w
 
 ## Testing
 
-There are Aiken tests for the stake distribution validator and the minting validator are in [this file](bridge_aiken/validators/tests/stake_distribution_test.ak) and [this file](bridge_aiken/validators/tests/minting_test.ak) respectively. Their names are mostly self-explanatory.
+There are Aiken tests for the stake distribution validator and the minting validator are in [this file](bridge-aiken/validators/tests/stake_distribution_validator_test.ak) and [this file](bridge-aiken/validators/tests/minting_validator_test.ak) respectively. Their names are mostly self-explanatory.
 
 To run the tests, just [install Aiken](https://aiken-lang.org/installation-instructions) and use the command:
 

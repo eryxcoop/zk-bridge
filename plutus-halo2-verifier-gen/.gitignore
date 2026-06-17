@@ -16,7 +16,9 @@ VKConstants.hs
 VerifierScript.flat
 benchmark.json
 plinth-verifier/dist-newstyle
-Cargo.lock
+# This crate ships runnable bins used by bridge-aiken scripts, so keep the
+# lockfile versioned for reproducible builds across machines.
+!Cargo.lock
 plutus.json
 .env
 plutus.json
@@ -25,3 +27,6 @@ gates_test.ak
 proof_verifier.ak
 verifier_key.ak
 profiler.ak
+
+optimizaciones/
+analisis-circuito/
