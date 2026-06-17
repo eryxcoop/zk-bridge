@@ -1,0 +1,122 @@
+//! Module for generating the Plinth and Aiken verifiers for a given circuit
+//! the correct mustashe templates and emitting them to the correct locations.
+pub(crate) mod adjusted_types;
+pub use adjusted_types::CardanoFriendlyBlake2b;
+pub(crate) mod emitters;
+pub(crate) mod extraction;
+pub use emitters::{
+    aiken::{emit_verifier_code as emit_verifier_aiken, emit_vk_code as emit_vk_aiken},
+    plinth::{emit_verifier_code as emit_verifier_plinth, emit_vk_code as emit_vk_plinth},
+};
+pub use extraction::pcs::ExtractPCS;
+pub use extraction::pcs::PCSType;
+pub use extraction::{CircuitRepresentation, extract_circuit};
+pub(crate) mod proof_serialization;
+pub use proof_serialization::{export_proof, export_public_inputs, serialize_proof};
+
+use anyhow::{Context as _, Result};
+use std::path::Path;
+
+use blstrs::{Bls12, G1Projective, Scalar};
+use halo2_proofs::plonk::VerifyingKey;
+use halo2_proofs::poly::commitment::PolynomialCommitmentScheme;
+use halo2_proofs::poly::kzg::params::ParamsKZG;
+
+/// Generates a Plinth verifier for a specific circuit and saves the generated
+/// code to the specified file paths.
+/// Uses different KZG type based on used PolynomialCommitmentScheme.
+///
+/// # Arguments
+/// * `params` - Parameters for the KZG polynomial commitment scheme
+/// * `vk` - Verifying key for the circuit, it can have either GWC19, or halo2 based KZG
+/// * `instances` - Public inputs to the circuit
+///
+/// # Returns
+/// * `Result<(), String>` - Ok(()) if the generation is successful, Err(String) otherwise
+pub fn generate_plinth_verifier<PCS>(
+    params: &ParamsKZG<Bls12>,
+    vk: &VerifyingKey<Scalar, PCS>,
+    instances: &[&[&[Scalar]]],
+) -> Result<()>
+where
+    PCS: ExtractPCS + PolynomialCommitmentScheme<Scalar, Commitment = G1Projective>,
+{
+    // static locations of files in plutus directory
+    // let verifier_template_file = Path::new("plinth-verifier/templates/verification_halo2_kzg.hbs");
+    let verifier_template_file = match PCS::pcs_type() {
+        PCSType::GWC19 => Path::new("plinth-verifier/templates/verification_gwc19_kzg.hbs"),
+        PCSType::Halo2MultiOpen => {
+            Path::new("plinth-verifier/templates/verification_halo2_kzg.hbs")
+        }
+    };
+
+    let vk_template_file = Path::new("plinth-verifier/templates/vk_constants.hbs");
+    let verifier_generated_file =
+        Path::new("plinth-verifier/plutus-halo2/src/Plutus/Crypto/Halo2/Generic/Verifier.hs");
+    let vk_generated_file =
+        Path::new("plinth-verifier/plutus-halo2/src/Plutus/Crypto/Halo2/Generic/VKConstants.hs");
+
+    // Step 1: extract circuit representation
+    let circuit_representation = extract_circuit(params, vk, instances)
+        .context("Failed to extract the circuit representation")?;
+
+    // Step 2: Based on the circuit repr generate Plinth verifier and verification key constants
+    // using Handlebars templates
+    emit_verifier_plinth(
+        verifier_template_file,
+        verifier_generated_file,
+        &circuit_representation,
+    )
+    .context("Failed to emit the verifier code for plutus")?;
+    emit_vk_plinth(vk_template_file, vk_generated_file, &circuit_representation)
+        .context("Failed to emit the verifier key constants")?;
+
+    Ok(())
+}
+
+/// Generates an Aiken verifier for a specific circuit and saves the generated
+/// code to the specified file paths.
+/// Uses different KZG type based on used PolynomialCommitmentScheme.
+///
+/// # Arguments
+/// * `params` - Parameters for the KZG polynomial commitment scheme
+/// * `vk` - Verifying key for the circuit, it can have either GWC19, or halo2 based KZG
+/// * `instances` - Public inputs to the circuit
+///
+/// # Returns
+/// * `Result<(), String>` - Ok(()) if the generation is successful, Err(String) otherwise
+pub fn generate_aiken_verifier<PCS>(
+    params: &ParamsKZG<Bls12>,
+    vk: &VerifyingKey<Scalar, PCS>,
+    instances: &[&[&[Scalar]]],
+    test_proofs: Option<(Vec<u8>, Vec<u8>)>,
+) -> Result<()>
+where
+    PCS: ExtractPCS + PolynomialCommitmentScheme<Scalar, Commitment = G1Projective>,
+{
+    let circuit_representation = extract_circuit(params, vk, instances)
+        .context("Failed to extract the circuit representation")?;
+
+    // static locations of files in aiken directory
+    let verifier_template_file = match PCS::pcs_type() {
+        PCSType::GWC19 => Path::new("aiken-verifier/templates/verification_gwc19.hbs"),
+        PCSType::Halo2MultiOpen => Path::new("aiken-verifier/templates/verification_h2.hbs"),
+    };
+
+    emit_verifier_aiken(
+        verifier_template_file,
+        Path::new("aiken-verifier/aiken_halo2/lib/proof_verifier.ak"),
+        Some(Path::new("aiken-verifier/templates/profiler.hbs")),
+        &circuit_representation,
+        test_proofs.map(|(p, invalid_p)| (p, invalid_p, instances[0][0].to_vec())),
+    )
+    .context("Failed to emit the verifier code for aiken")?;
+    emit_vk_aiken(
+        Path::new("aiken-verifier/templates/vk_constants.hbs"),
+        Path::new("aiken-verifier/aiken_halo2/lib/verifier_key.ak"),
+        &circuit_representation,
+    )
+    .context("Failed to emit the verifier key constants for aiken")?;
+
+    Ok(())
+}
