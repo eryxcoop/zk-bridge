@@ -58,8 +58,8 @@ Each proof is wired into a specific validator:
 In both cases the proof components (`piA`/`piB`/`piC`) and the public-input
 values travel inside each validator's redeemer, while the verifying keys are
 committed under `lib/zk/` (`snapshot_membership_vk.ak`, `tx_set_update_vk.ak`).
-Because a BLS12-381 scalar cannot hold a full 256-bit digest, every 32-byte
-public input is split into a high/low pair of 16-byte field elements before
+Because a BLS12-381 scalar cannot hold a full 256-bit digest, every public input 
+is split into a high/low pair of 16-byte field elements before
 verification (`lib/zk/public_input_packing.ak`). Finally, the two proofs are
 tied together: `tx_id_in_both_redeemers_are_equal` forces the same locking tx
 id through both the snapshot-membership and tx-set-update proofs within a
@@ -201,7 +201,18 @@ is built and submitted against a local Dolos through three layers:
 ## Running the main cases
 
 Everything is wired through a single operator entrypoint at
-`bridge-aiken/scripts/bridge.sh`. The main sequence is:
+`bridge-aiken/scripts/bridge.sh`.
+
+Before running anything, you need the **Tx3 toolchain** installed and updated: the flow
+resolves and submits transactions through `trix` and its compiler `tx3c`, which
+are managed by the `tx3up` version manager. Install it by following the official
+instructions at <https://docs.txpipe.io/tx3/install>. `bootstrap --link` below
+symlinks the repo-local tooling to that toolchain, so it has to exist first.
+
+If you installed Tx3 a while ago, `tx3up` alone may not be enough to bring it up
+to date; reinstall it from scratch following the same instructions above.
+
+The main sequence is:
 
 ```bash
 cd bridge-aiken
