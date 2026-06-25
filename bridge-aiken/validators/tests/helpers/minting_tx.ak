@@ -16,8 +16,7 @@ use tests/helpers/certificates/stake_distribution_certificates.{
 use tests/helpers/locking_tx.{simple_locking_tx}
 use tests/helpers/minting_redeemer.{
   a_valid_minting_proof, generate_minting_validator_redeemer,
-  simple_minting_validator_redeemer,
-  valid_snapshot_membership_minting_redeemer,
+  simple_minting_validator_redeemer, valid_snapshot_membership_minting_redeemer,
 }
 use tests/helpers/proof_receipt
 use tests/helpers/stake_distribution_tx.{sd_certificate_to_stake_output}
@@ -263,6 +262,33 @@ pub fn minting_tx_with_an_incorrect_mint_value() -> Transaction {
   )
 }
 
+// Mints the right amount but sends the bridge tokens to the wrong credential,
+// so the minted-destination binding must reject it.
+fn minting_output_to_wrong_destination() -> Output {
+  Output {
+    address: Address {
+      payment_credential: VerificationKey("wrong_destination_credential"),
+      stake_credential: None,
+    },
+    value: build_value_with_native_token(
+      env.transferred_asset_policy_id,
+      env.transferred_asset_name,
+      1,
+    ),
+    datum: NoDatum,
+    reference_script: None,
+  }
+}
+
+pub fn minting_tx_with_wrong_mint_destination() -> Transaction {
+  generate_minting_tx(
+    simple_minting_inputs(),
+    [simple_tx_updater_output(), minting_output_to_wrong_destination()],
+    simple_reference_inputs(),
+    env.transferred_asset_policy_id,
+  )
+}
+
 pub fn minting_tx_without_phase2_receipt() -> Transaction {
   generate_minting_tx(
     [locking_txs_set_input()],
@@ -338,15 +364,15 @@ pub fn simple_minting_tx_with_fixed_locking_tx_hash(
   locking_tx_hash: ByteArray,
 ) -> Transaction {
   let locking_tx = simple_locking_tx()
-  let minting_redeemer_data: Data = generate_minting_validator_redeemer(
-    locking_tx,
-    a_valid_minting_proof(),
-    Some(locking_tx_hash),
-    test_constants.destination_chain_address,
-  )
-  let txs_updater_redeemer_data: Data = simple_txs_updater_redeemer(
-    locking_tx_hash,
-  )
+  let minting_redeemer_data: Data =
+    generate_minting_validator_redeemer(
+      locking_tx,
+      a_valid_minting_proof(),
+      Some(locking_tx_hash),
+      test_constants.destination_chain_address,
+    )
+  let txs_updater_redeemer_data: Data =
+    simple_txs_updater_redeemer(locking_tx_hash)
 
   Transaction {
     ..simple_minting_tx(),
@@ -362,9 +388,8 @@ pub fn simple_minting_tx_with_fixed_locking_tx_hash(
 
 pub fn simple_minting_tx_with_mismatched_txs_updater_tx_id() -> Transaction {
   let minting_redeemer_data: Data = valid_snapshot_membership_minting_redeemer()
-  let txs_updater_redeemer_data: Data = simple_txs_updater_redeemer(
-    "another_transaction_id",
-  )
+  let txs_updater_redeemer_data: Data =
+    simple_txs_updater_redeemer("another_transaction_id")
 
   Transaction {
     ..simple_minting_tx(),

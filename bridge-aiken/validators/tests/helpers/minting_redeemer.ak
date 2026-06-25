@@ -1,9 +1,7 @@
 use ak_381/groth16.{Proof}
 use bridge/common_types.{LockingTxSourceOutputReference}
-use cardano/address.{Address, PaymentCredential}
-use cardano/assets.{lovelace_of, quantity_of}
-use cardano/transaction.{Input, Output, Transaction}
-use env
+use cardano/address.{PaymentCredential}
+use cardano/transaction.{Transaction}
 use minting.{MintingValidatorRedeemer}
 use mithril/reduced_mithril_certificate.{
   ReducedMithrilCertificate, reduced_mithril_certificate_from_certificate,
@@ -19,60 +17,48 @@ use tests/helpers/test_constants
 
 type LockingTxRedeemerFields {
   input_output_reference: LockingTxSourceOutputReference,
-  input_payment_credential: ByteArray,
-  input_datum: ByteArray,
+  output_address: ByteArray,
+  output_lovelace: Int,
   destination_payment_credential: ByteArray,
   asset_amount: Int,
-  ada_amount: Int,
+  fee: Int,
   hash: ByteArray,
 }
 
+// The canonical locking-transaction body fields come from the regenerated
+// `bridge_fixture` (single source of truth, derived from the off-chain pallas
+// builder), so the redeemer's `locking_tx_hash` matches both the on-chain
+// reconstruction and the membership proof. The `_locking_tx` argument is kept
+// for call-site compatibility but no longer drives the body fields.
 pub fn generate_minting_validator_redeemer(
-  locking_tx: Transaction,
+  _locking_tx: Transaction,
   merkle_proof: Proof,
   fixed_tx_hash: Option<ByteArray>,
   destination_address: PaymentCredential,
 ) -> MintingValidatorRedeemer {
-  expect [locking_tx_input] = locking_tx.inputs
-  expect [locking_tx_output] = locking_tx.outputs
-  let locking_tx_input_output_reference: LockingTxSourceOutputReference = LockingTxSourceOutputReference {
-    transaction_id: locking_tx_input.output_reference.transaction_id,
-    output_index: locking_tx_input.output_reference.output_index,
-  }
-  let locking_tx_input_payment_credential: ByteArray = bridge_locking_tx.payment_credential_bytes(
-    locking_tx_input.output.address.payment_credential,
-  )
-  let locking_tx_input_datum: ByteArray = bridge_locking_tx.datum_bytes(
-    locking_tx_input.output.datum,
-  )
+  let locking_tx_fields =
+    LockingTxRedeemerFields {
+      input_output_reference: bridge_fixture.actual_locking_tx_input_output_reference,
+      output_address: bridge_fixture.actual_locking_tx_output_address,
+      output_lovelace: bridge_fixture.actual_locking_tx_output_lovelace,
+      destination_payment_credential: bridge_locking_tx.payment_credential_bytes(
+        destination_address,
+      ),
+      asset_amount: bridge_fixture.actual_locking_tx_asset_amount,
+      fee: bridge_fixture.actual_locking_tx_fee,
+      // Legacy compatibility field name: this now carries the canonical
+      // Cardano tx hash expected by the refreshed circuit fixture.
+      hash: bridge_fixture.final_locking_tx_hash,
+    }
 
-  let locking_tx_ada_amount = lovelace_of(locking_tx_output.value)
-  let locking_tx_asset_amount = quantity_of(
-    locking_tx_output.value,
-    env.transferred_asset_policy_id,
-    env.transferred_asset_name,
-  )
-
-  let locking_tx_fields = LockingTxRedeemerFields {
-    input_output_reference: locking_tx_input_output_reference,
-    input_payment_credential: locking_tx_input_payment_credential,
-    input_datum: locking_tx_input_datum,
-    destination_payment_credential: bridge_locking_tx.payment_credential_bytes(
-      destination_address,
-    ),
-    asset_amount: locking_tx_asset_amount,
-    ada_amount: locking_tx_ada_amount,
-    // Legacy compatibility field name: this now carries the canonical
-    // Cardano tx hash expected by the refreshed circuit fixture.
-    hash: bridge_fixture.final_locking_tx_hash,
-  }
-
-  let certificate = reduced_mithril_certificate_from_certificate(
-    simple_cardano_transactions_certificate(),
-  )
-  let parent_certificate = reduced_mithril_certificate_from_certificate(
-    parent_of_simple_cardano_transactions_certificate(),
-  )
+  let certificate =
+    reduced_mithril_certificate_from_certificate(
+      simple_cardano_transactions_certificate(),
+    )
+  let parent_certificate =
+    reduced_mithril_certificate_from_certificate(
+      parent_of_simple_cardano_transactions_certificate(),
+    )
 
   minting_redeemer_from_certificates(
     certificate,
@@ -125,11 +111,11 @@ fn minting_redeemer_from_certificates(
     },
     locking_tx_input_output_reference_tx_id: locking_fields.input_output_reference.transaction_id,
     locking_tx_input_output_reference_output_index: locking_fields.input_output_reference.output_index,
-    locking_tx_input_payment_credential: locking_fields.input_payment_credential,
-    locking_tx_input_datum: locking_fields.input_datum,
+    locking_tx_output_address: locking_fields.output_address,
+    locking_tx_output_lovelace: locking_fields.output_lovelace,
     locking_tx_destination_payment_credential: locking_fields.destination_payment_credential,
     locking_tx_asset_amount: locking_fields.asset_amount,
-    locking_tx_ada_amount: locking_fields.ada_amount,
+    locking_tx_fee: locking_fields.fee,
   }
 }
 
@@ -158,6 +144,16 @@ pub fn minting_validator_redeemer_with_incorrect_locking_tx_hash() -> MintingVal
     Some("incorrect_locking_tx_hash"),
     test_constants.destination_chain_address,
   )
+}
+
+/// Keeps the proved `locking_tx_hash` but tampers with a body field
+/// (`output_lovelace`), so the on-chain canonical reconstruction hashes to a
+/// different value and the body-hash binding must reject it.
+pub fn minting_validator_redeemer_with_tampered_locking_body() -> MintingValidatorRedeemer {
+  MintingValidatorRedeemer {
+    ..valid_snapshot_membership_minting_redeemer(),
+    locking_tx_output_lovelace: 9_999_999,
+  }
 }
 
 pub fn minting_validator_redeemer_with_invalid_merkle_proof() -> MintingValidatorRedeemer {

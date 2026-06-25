@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import subprocess
 from pathlib import Path
@@ -24,11 +25,73 @@ REPO_ROOT = ROOT_DIR.parent
 ENV_DEFAULT_PATH = ROOT_DIR / "env" / "default.ak"
 CTS_DIR = REPO_ROOT / "circuit_transaction_snapshot"
 CIE_DIR = REPO_ROOT / "circuit_inclusion_exclusion"
+LOCKING_TX_BUILDER_DIR = ROOT_DIR / "tools" / "build_canonical_locking_tx"
 DEFAULT_USER_ADDRESS = "addr_test1vqxazu4ekxrxlk238wt0e03h3gk44hrlkjvef85gvh2nahcgnmpfc"
 
 
 def cargo_locked_args(crate_dir: Path) -> list[str]:
     return ["--locked"] if (crate_dir / "Cargo.lock").exists() else []
+
+
+def _strip_0x(value: str) -> str:
+    return value[2:] if value.startswith("0x") else value
+
+
+def copy_generated_vk(source: Path, destination: Path) -> None:
+    text = source.read_text()
+    if not text.endswith("\n"):
+        text += "\n"
+    destination.write_text(text)
+
+
+def derive_canonical_locking_tx(bridge_raw: dict) -> dict:
+    """Builds the bridge's canonical minimal locking-transaction body with
+    `tools/build_canonical_locking_tx` and returns its `tx_hash_hex`,
+    `body_cbor_hex` and `datum_cbor_hex`.
+
+    The transaction hash is *derived* from the body fields here so it can never
+    drift from what the on-chain validator recomputes; the bridged asset
+    `(policy, name)` and the datum `bridge_id` come from `env/default.ak`.
+    """
+    env_text = ENV_DEFAULT_PATH.read_text()
+    asset_name_text = parse_env_text_const(env_text, "transferred_asset_name")
+    spec = {
+        "input_tx_id_hex": _strip_0x(bridge_raw["locking_tx_input_output_reference_tx_id_hex"]),
+        "input_index": bridge_raw["locking_tx_input_output_reference_output_index"],
+        "output_address_hex": _strip_0x(bridge_raw["locking_tx_output_address_hex"]),
+        "output_lovelace": bridge_raw["locking_tx_output_lovelace"],
+        "asset_policy_id_hex": parse_env_policy_const(env_text, "transferred_asset_policy_id"),
+        "asset_name_hex": asset_name_text.encode().hex(),
+        "asset_amount": bridge_raw["bridge_asset_amount"],
+        "bridge_id_hex": parse_env_policy_const(env_text, "bridge_minting_policy_id"),
+        "destination_vkh_hex": _strip_0x(
+            bridge_raw["actual_locking_tx_destination_payment_credential_hex"]
+        ),
+        "fee": bridge_raw["locking_tx_fee"],
+    }
+    cmd = [
+        "cargo",
+        "run",
+        *cargo_locked_args(LOCKING_TX_BUILDER_DIR),
+        "--quiet",
+        "--manifest-path",
+        str(LOCKING_TX_BUILDER_DIR / "Cargo.toml"),
+        "--",
+        "-",
+    ]
+    env = dict(os.environ)
+    if not env.get("RUSTFLAGS"):
+        env["RUSTFLAGS"] = "-Awarnings"
+    proc = subprocess.run(
+        cmd,
+        cwd=LOCKING_TX_BUILDER_DIR,
+        input=json.dumps(spec),
+        capture_output=True,
+        text=True,
+        check=True,
+        env=env,
+    )
+    return json.loads(proc.stdout)
 
 
 def run(cmd: list[str], cwd: Path, stdout_path: Path | None = None) -> None:
@@ -62,7 +125,7 @@ def sync_bridge_fixture_helper(data_path: Path, output_path: Path) -> None:
     write_bridge_fixture(output_path, data_path)
 
 
-def export_snapshot_fixture(bridge_raw: dict, user_address: str, work_dir: Path) -> dict:
+def export_snapshot_fixture(locking_hash_hex: str, work_dir: Path) -> dict:
     snapshot_dir = (work_dir / "snapshot").resolve()
     input_path = snapshot_dir / "input.json"
     summary_path = snapshot_dir / "proof_summary.json"
@@ -79,7 +142,7 @@ def export_snapshot_fixture(bridge_raw: dict, user_address: str, work_dir: Path)
         "generate_test_witness_for_circuit",
         "--",
         "--tx-hash-hex",
-        bridge_raw["locking_tx_hash_hex"],
+        locking_hash_hex,
     ]
     run(cmd, cwd=CTS_DIR, stdout_path=input_path)
 
@@ -148,11 +211,27 @@ def refresh_bridge_fixture(
     skip_test_fixture_alignment: bool,
 ) -> None:
     bridge_raw = read_json(data_path)
-    snapshot_summary = export_snapshot_fixture(bridge_raw, user_address, work_dir)
+    canonical = derive_canonical_locking_tx(bridge_raw)
+    locking_hash_hex = canonical["tx_hash_hex"]
+    snapshot_summary = export_snapshot_fixture(locking_hash_hex, work_dir)
     tx_set_summary = export_tx_set_update_fixture(snapshot_summary["cardano_tx_hash_hex"], work_dir)
+
+    # The arkworks export regenerates the (deterministic local-fixture) verifying
+    # keys alongside each proof; copy them next to the validators so the
+    # committed VK always matches the committed proof.
+    copy_generated_vk(
+        work_dir / "snapshot" / "snapshot_membership_vk.ak",
+        ROOT_DIR / "lib" / "zk" / "snapshot_membership_vk.ak",
+    )
+    copy_generated_vk(
+        work_dir / "tx-set-update" / "tx_set_update_vk.ak",
+        ROOT_DIR / "lib" / "zk" / "tx_set_update_vk.ak",
+    )
 
     updated = dict(bridge_raw)
     updated["locking_tx_hash_hex"] = snapshot_summary["cardano_tx_hash_hex"]
+    updated["locking_tx_body_cbor_hex"] = canonical["body_cbor_hex"]
+    updated["locking_tx_datum_cbor_hex"] = canonical["datum_cbor_hex"]
     updated["locking_tx_merkle_proof_public_sub_root_hex"] = snapshot_summary[
         "locking_tx_merkle_proof_public_sub_root_hex"
     ]
@@ -202,6 +281,25 @@ def main() -> int:
     if args.check:
         if args.proof_export_bundle is not None:
             resolve_tx_snapshot_root(bridge_raw, args.proof_export_bundle)
+        # The canonical locking-tx body (and therefore its hash) bakes in the
+        # bridged asset policy and datum `bridge_id`, both of which equal the
+        # bridge minting policy id from env. When that hash changes (e.g. the
+        # minting validator was recompiled), the committed body/hash drift from
+        # what the on-chain validator now reconstructs, so the fixture must be
+        # refreshed. `check_bridge_fixture` only proves the helper matches the
+        # data file, so detect the env drift explicitly here.
+        canonical = derive_canonical_locking_tx(bridge_raw)
+        if (
+            _strip_0x(fixture_hash_hex) != _strip_0x(canonical["tx_hash_hex"])
+            or _strip_0x(bridge_raw["locking_tx_body_cbor_hex"])
+            != _strip_0x(canonical["body_cbor_hex"])
+            or _strip_0x(bridge_raw["locking_tx_datum_cbor_hex"])
+            != _strip_0x(canonical["datum_cbor_hex"])
+        ):
+            raise SystemExit(
+                "Bridge zk fixture drifted from env policy hashes; "
+                "run sync_bridge_zk_fixture.py --fix-drift to regenerate it"
+            )
         sync_bridge_fixture_helper(args.data, args.output)
         check_bridge_fixture(args.output, args.data)
         maybe_check_fixture_alignment(

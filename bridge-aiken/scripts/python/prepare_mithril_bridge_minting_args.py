@@ -143,16 +143,20 @@ def load_bridge_minting_inputs(
 
 def bridge_locking_tx_args(inputs: BridgeMintingInputs) -> dict:
     bridge_raw = inputs.bridge_raw
-    locking_tx_input_output_reference_tx_id = ascii_bytes_hex(
-        bridge_raw["locking_tx_input_output_reference_tx_id_text"]
+    locking_tx_input_output_reference_tx_id = as_bytes_hex(
+        strip_0x(bridge_raw["locking_tx_input_output_reference_tx_id_hex"])
     )
     locking_tx_input_output_reference_output_index = bridge_raw[
         "locking_tx_input_output_reference_output_index"
     ]
-    locking_tx_input_payment_credential = ascii_bytes_hex(
-        bridge_raw["locking_tx_input_payment_credential_text"]
+    locking_tx_output_address = as_bytes_hex(
+        strip_0x(bridge_raw["locking_tx_output_address_hex"])
     )
-    locking_tx_ada_amount = bridge_raw["locking_tx_ada_amount"]
+    locking_tx_output_lovelace = bridge_raw["locking_tx_output_lovelace"]
+    locking_tx_fee = bridge_raw["locking_tx_fee"]
+    locking_tx_destination_payment_credential = as_bytes_hex(
+        strip_0x(bridge_raw["actual_locking_tx_destination_payment_credential_hex"])
+    )
     locking_tx_hash_value = as_bytes_hex(
         verified_locking_tx_hash_hex(bridge_raw),
     )
@@ -160,11 +164,11 @@ def bridge_locking_tx_args(inputs: BridgeMintingInputs) -> dict:
         "locking_tx_hash": locking_tx_hash_value,
         "locking_tx_input_output_reference_tx_id": locking_tx_input_output_reference_tx_id,
         "locking_tx_input_output_reference_output_index": locking_tx_input_output_reference_output_index,
-        "locking_tx_input_payment_credential": locking_tx_input_payment_credential,
-        "locking_tx_input_datum": "0x",
-        "locking_tx_destination_payment_credential": "0x" + inputs.user_pkh,
+        "locking_tx_output_address": locking_tx_output_address,
+        "locking_tx_output_lovelace": locking_tx_output_lovelace,
+        "locking_tx_destination_payment_credential": locking_tx_destination_payment_credential,
         "locking_tx_asset_amount": bridge_raw["bridge_asset_amount"],
-        "locking_tx_ada_amount": locking_tx_ada_amount,
+        "locking_tx_fee": locking_tx_fee,
     }
 
 

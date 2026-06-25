@@ -183,7 +183,13 @@ of the bridge logic. Two validators consume it:
   bridge tokens, the validator pulls the receipt's `statement_hash` and
   feeds it into the Mithril certificate check, alongside a Merkle membership
   proof that the locking transaction is included in the snapshot certified
-  by that statement.
+  by that statement. The proved `locking_tx_hash` is the canonical Cardano
+  transaction id (`blake2b_256(tx_body_CBOR)`) of the locking transaction,
+  not a bridge-specific digest. The validator reconstructs the canonical
+  minimal locking transaction body from the redeemer, hashes it on-chain, and
+  requires that hash to match the proved snapshot leaf. This makes the mint
+  cryptographically depend on the actual locked amount and destination, not
+  only on redeemer fields that are internally consistent.
 
 The shared lookup helpers all live in `lib/two_phase/proof_receipt.ak`:
 `find_phase2_input` (locate the receipt input by script credential + policy

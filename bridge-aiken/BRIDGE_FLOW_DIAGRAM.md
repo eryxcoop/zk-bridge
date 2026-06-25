@@ -5,7 +5,7 @@ become out of sync with the actual flow.
 
 ## What milestone 6 changed
 
-The shape of the flow shown below is driven by three changes introduced
+The shape of the flow shown below is driven by four changes introduced
 in milestone 6:
 
 1. **Mithril STM proof verification is split into two phases.** A
@@ -36,6 +36,17 @@ in milestone 6:
    UTxOs (e.g. `publish_proof_receipt_reference_script`) and the
    downstream transactions pull them in as `reference_input`s rather
    than carrying the script bytes themselves.
+
+4. **Bridge mints are bound to the real Cardano locking transaction.**
+   The minting validator no longer accepts a bridge-specific digest that is
+   merely self-consistent with redeemer fields. Instead, `locking_tx_hash`
+   carries the canonical Cardano transaction id:
+   `blake2b_256(tx_body_CBOR)`. The validator reconstructs the canonical
+   minimal locking transaction body from the redeemer fields, hashes it, and
+   checks that it is the same hash proved by the `cardano_transactions`
+   Mithril snapshot proof. This cryptographically binds the locked amount,
+   destination, input, output, inline datum, fee, asset policy and asset name
+   to a real settled Cardano transaction in the snapshot.
 
 ## Current snapshot
 
@@ -149,7 +160,9 @@ entities:
 - **`cardano_transactions`** — Mithril's own naming for the
   certificate that signs the Merkle root of a snapshot of Cardano
   transactions up to a given epoch. The bridge uses it to prove that
-  a specific locking transaction was included in that snapshot.
+  a specific locking transaction was included in that snapshot. The
+  proved leaf is the real Cardano transaction id of the canonical locking
+  transaction body, not a bridge-derived digest.
 
 Each domain is built taking data from the off-chain proof export bundle
   `bridge-compatible-mithril-stm-bundle.json`, whose
@@ -215,6 +228,13 @@ The final transaction that mints the wrapped tokens.
     locking tx minted by this transaction. This UTxO supersedes the
     one produced by `updater` and is the one a subsequent
     `bridge_mint_tx` would consume in its place.
+- **Cryptographic locking-tx binding:** the minting validator rebuilds
+  the canonical minimal locking transaction body and checks that
+  `blake2b_256(body)` equals the `locking_tx_hash` proved in the
+  `cardano_transactions` snapshot. Because that body includes the bridged
+  asset amount and the `LockingTxDatum` destination, the transaction can only
+  mint exactly the amount that was locked and must pay it to the destination
+  credential committed by the locking transaction.
 
 ## Source of truth
 

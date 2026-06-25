@@ -44,8 +44,8 @@ pub fn tx_id_in_both_redeemers_are_equal(
 /// This function verifies that the transaction is indeed minting tokens for the `PolicyId` and name
 /// corresponding to the bridged assets (which should happen atomically in the minting validator).
 fn bridge_tokens_are_being_minted(tx: Transaction) -> Bool {
-  expect Some((bridge_policy_id, _)) = find_bridge_mint_redeemer(tx)
-  assets.quantity_of(tx.mint, bridge_policy_id, env.transferred_asset_name) > 0
+  expect Some((bridge_policy_id, redeemer)) = find_bridge_mint_redeemer(tx)
+  assets.quantity_of(tx.mint, bridge_policy_id, env.transferred_asset_name) == redeemer.locking_tx_asset_amount
 }
 
 validator txs_updater_minting_validator_spend(

@@ -297,11 +297,11 @@ type MintingValidatorRedeemer {
   locking_tx_hash: Bytes,
   locking_tx_input_output_reference_tx_id: Bytes,
   locking_tx_input_output_reference_output_index: Int,
-  locking_tx_input_payment_credential: Bytes,
-  locking_tx_input_datum: Bytes,
+  locking_tx_output_address: Bytes,
+  locking_tx_output_lovelace: Int,
   locking_tx_destination_payment_credential: Bytes,
   locking_tx_asset_amount: Int,
-  locking_tx_ada_amount: Int,
+  locking_tx_fee: Int,
 }
 
 // Redeemer of the stake-distribution minting policy. Carries the new
@@ -1249,11 +1249,11 @@ tx bridge_mint_tx(
   locking_tx_hash: Bytes,
   locking_tx_input_output_reference_tx_id: Bytes,
   locking_tx_input_output_reference_output_index: Int,
-  locking_tx_input_payment_credential: Bytes,
-  locking_tx_input_datum: Bytes,
+  locking_tx_output_address: Bytes,
+  locking_tx_output_lovelace: Int,
   locking_tx_destination_payment_credential: Bytes,
   locking_tx_asset_amount: Int,
-  locking_tx_ada_amount: Int,
+  locking_tx_fee: Int,
   tx_set_update_proof_pi_a: Bytes,
   tx_set_update_proof_pi_b: Bytes,
   tx_set_update_proof_pi_c: Bytes,
@@ -1316,13 +1316,12 @@ tx bridge_mint_tx(
       locking_tx_input_output_reference_tx_id,
     bridge_locking_tx_input_output_reference_output_index:
       locking_tx_input_output_reference_output_index,
-    bridge_locking_tx_input_payment_credential:
-      locking_tx_input_payment_credential,
-    bridge_locking_tx_input_datum: locking_tx_input_datum,
+    bridge_locking_tx_output_address: locking_tx_output_address,
+    bridge_locking_tx_output_lovelace: locking_tx_output_lovelace,
     bridge_locking_tx_destination_payment_credential:
       locking_tx_destination_payment_credential,
     bridge_locking_tx_asset_amount: locking_tx_asset_amount,
-    bridge_locking_tx_ada_amount: locking_tx_ada_amount,
+    bridge_locking_tx_fee: locking_tx_fee,
     bridge_tx_set_update_proof_pi_a: tx_set_update_proof_pi_a,
     bridge_tx_set_update_proof_pi_b: tx_set_update_proof_pi_b,
     bridge_tx_set_update_proof_pi_c: tx_set_update_proof_pi_c,
@@ -1426,13 +1425,12 @@ tx bridge_mint_tx(
         bridge_locking_tx_input_output_reference_tx_id,
       locking_tx_input_output_reference_output_index:
         bridge_locking_tx_input_output_reference_output_index,
-      locking_tx_input_payment_credential:
-        bridge_locking_tx_input_payment_credential,
-      locking_tx_input_datum: bridge_locking_tx_input_datum,
+      locking_tx_output_address: bridge_locking_tx_output_address,
+      locking_tx_output_lovelace: bridge_locking_tx_output_lovelace,
       locking_tx_destination_payment_credential:
         bridge_locking_tx_destination_payment_credential,
       locking_tx_asset_amount: bridge_locking_tx_asset_amount,
-      locking_tx_ada_amount: bridge_locking_tx_ada_amount,
+      locking_tx_fee: bridge_locking_tx_fee,
     },
   }
 

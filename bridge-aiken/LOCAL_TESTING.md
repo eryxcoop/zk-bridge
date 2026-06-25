@@ -123,14 +123,18 @@ builder reads. They are checked into the repo and treated as the source
 of truth for the local test scenario.
 
 - **`bridge_mint_raw.json`** — the raw data describing the bridge-mint
-  event from the Cardano side: locking-tx hash, the Cardano-transactions
-  merkle root that the child Mithril certificate signs, the new merkle
-  root after the update, packed public inputs and proofs for the two
-  bridge ZK circuits (tx snapshot inclusion + tx set update). It feeds
-  the builder as the `signed_message` for the `tx_snapshot` bundle, and
-  is also read directly by `bridge_minting.sh` for the bridge-ZK data
-  that the Mithril bundle does not carry (`locking_tx_hash`,
-  `minting_merkle_proof`, `tx_set_update_proof`, ...).
+  event from the Cardano side: canonical locking transaction body fields,
+  the resulting real Cardano locking-tx hash
+  (`blake2b_256(tx_body_CBOR)`), the Cardano-transactions merkle root that
+  the child Mithril certificate signs, the new merkle root after the update,
+  packed public inputs and proofs for the two bridge ZK circuits (tx
+  snapshot inclusion + tx set update). The canonical locking-tx hash is
+  derived by `tools/build_canonical_locking_tx`, and the Aiken minting
+  validator reconstructs and hashes the same body on-chain before accepting
+  the mint. It feeds the builder as the `signed_message` for the
+  `tx_snapshot` bundle, and is also read directly by `bridge_minting.sh` for
+  the bridge-ZK data that the Mithril bundle does not carry
+  (`locking_tx_hash`, `minting_merkle_proof`, `tx_set_update_proof`, ...).
 - **`mithril_stake_distribution_genesis.json`** — the genesis Mithril
   stake-distribution certificate (bootstrap, `prev_hash = 0x`): hash,
   epoch, aggregate verification keys, signed message, signature,

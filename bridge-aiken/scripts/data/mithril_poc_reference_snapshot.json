@@ -1,18 +1,18 @@
 {
   "bridge_fixture": {
-    "locking_tx_hash_hex": "3c8083c0953d51e7d6addb2209c6181bd6723ae659ca93c3902cc0e576960bab",
-    "new_merkle_root_hex": "5cb3f84e41f5ea511f7b59cf8ea373ab2ab73d3f0ce0caffff65d3ce3128254a",
-    "snapshot_root_hex": "da7abe67b81d8fe9f7896670a12cd469397d8e7a8b9a61a47abd8af373aeb213"
+    "locking_tx_hash_hex": "0a72876b27cc4e80a84cb80cef9985c30ea96f84f954ebfb877918b5b88ab8c5",
+    "new_merkle_root_hex": "0025b74e7f2975bf35612e03d6b3d21f9d67bcc558e5ddec38d82c8dce8e2799",
+    "snapshot_root_hex": "1bd3fdf8aa7d5431aaea605fdadf016ef928fba2a01ec9fc9533cd0b7836b764"
   },
   "files": {
     "env/default.ak": "ad3b0f008bf002a4561d806f2f7d1eb68980de3a3181239d0537b5ff75fee38f",
-    "main.tx3": "2b4e7a104390ac72218fe4bda2471a28d18b1d942dfa66decd09d925a60d28d9",
-    "plutus.json": "1c617e81c7b9d72aaef4749949dbda1a27e9e12270f10ce7da70aee1ba9969b2",
-    "scripts/data/bridge_mint_raw.json": "00e46e017255277a8e219d2ba2246466cf10c44d40b4fb5adb3b21ad4898fda7",
+    "main.tx3": "ac05d2dc0170d3fae0fead1604dec762f52eabecba33b1e70a20dc7138fb29c0",
+    "plutus.json": "d464e039fb10106d882c3d3b8fe85b01cb331606702d4839b929bb2169b86678",
+    "scripts/data/bridge_mint_raw.json": "91a02513a92a56dffe3a6302f55f5aa80096c5727cc1a6ebe47e09b6edc97846",
     "scripts/data/mithril_stake_distribution_genesis.json": "54ca51e1870d1b9bd4d676f70bee18e7e6d0b6a1ec508980cc34b001fa93b09d",
     "scripts/data/mithril_stake_distribution_standard.json": "62e851db73b1de9f199de335b5d56fe37d0004c15c615c4be4c9ad2397d04b6f",
-    "validators/tests/helpers/bridge_fixture.ak": "a920a19081f3ed6c5055497a8392110612925c928917be1797b34c0986656218",
-    "validators/tests/helpers/certificates/cardano_transactions.ak": "06ee79e317129ecd2dece4b1db39ab39cb4b35a89516fe6056756d9811b36f53"
+    "validators/tests/helpers/bridge_fixture.ak": "f90f12fe1b16715e0eb18f0f152c3e420181704dcc57badc7ae5d3ebac9004ad",
+    "validators/tests/helpers/certificates/cardano_transactions.ak": "466696770106afb4a846d591a26f12dd198886ad5e10228d0fc8dd6492bd50e2"
   },
   "proof_export_bundle": {
     "child_certificate_hash": "0x062028d9a71eb9178dabe0018d161d5bc6773a331c3759f8f05661718296387f",
@@ -22,7 +22,7 @@
     "statement_hash": "0x0707070707070707070707070707070707070707070707070707070707070707"
   },
   "tx_snapshot_root": {
-    "bridge_fixture_hex": "0xda7abe67b81d8fe9f7896670a12cd469397d8e7a8b9a61a47abd8af373aeb213",
-    "proof_export_bundle_hex": "0xda7abe67b81d8fe9f7896670a12cd469397d8e7a8b9a61a47abd8af373aeb213"
+    "bridge_fixture_hex": "0x1bd3fdf8aa7d5431aaea605fdadf016ef928fba2a01ec9fc9533cd0b7836b764",
+    "proof_export_bundle_hex": "0x1bd3fdf8aa7d5431aaea605fdadf016ef928fba2a01ec9fc9533cd0b7836b764"
   }
 }

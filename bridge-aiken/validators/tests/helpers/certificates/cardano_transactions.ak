@@ -89,7 +89,7 @@ pub fn simple_cardano_transactions_certificate() -> MithrilCertificate {
     protocol_message: [
       Pair(
         CardanoTransactionsMerkleRoot,
-        @"da7abe67b81d8fe9f7896670a12cd469397d8e7a8b9a61a47abd8af373aeb213",
+        @"1cd3fdf8a97d5431a9465f5fdd83bfc1fe009daca8f60230deb06a35cbdda4d8",
       ),
       Pair(
         NextAggregateVerificationKey,

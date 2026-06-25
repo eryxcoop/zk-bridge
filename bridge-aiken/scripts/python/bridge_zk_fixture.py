@@ -28,7 +28,6 @@ def render_bridge_fixture(data: dict) -> str:
     tx_set_update_packed = data["tx_set_update_packed_public_inputs"]
     snapshot_proof = data["minting_merkle_proof"]
     tx_set_update_proof = data["tx_set_update_proof"]
-    locking_tx_input_datum_hex = data.get("locking_tx_input_datum_hex", "")
 
     return f"""use ak_381/groth16.{{Proof}}
 use bridge/common_types.{{LockingTxSourceOutputReference}}
@@ -64,20 +63,24 @@ pub const final_tx_set_update_root_out =
 
 pub const actual_locking_tx_input_output_reference =
   LockingTxSourceOutputReference {{
-    transaction_id: #"{ascii_hex(data["locking_tx_input_output_reference_tx_id_text"])}",
+    transaction_id: #"{data["locking_tx_input_output_reference_tx_id_hex"]}",
     output_index: {data["locking_tx_input_output_reference_output_index"]},
   }}
 
-pub const actual_locking_tx_input_payment_credential =
-  #"{ascii_hex(data["locking_tx_input_payment_credential_text"])}"
+pub const actual_locking_tx_output_address =
+  #"{data["locking_tx_output_address_hex"]}"
 
-pub const actual_locking_tx_input_datum = #"{locking_tx_input_datum_hex}"
+pub const actual_locking_tx_output_lovelace = {data["locking_tx_output_lovelace"]}
+
+pub const actual_locking_tx_fee = {data["locking_tx_fee"]}
+
+pub const actual_locking_tx_destination_payment_credential =
+  #"{data["actual_locking_tx_destination_payment_credential_hex"]}"
 
 pub const actual_locking_tx_destination_address =
   VerificationKey(#"{data["actual_locking_tx_destination_payment_credential_hex"]}")
 
 pub const actual_locking_tx_asset_amount = {data["bridge_asset_amount"]}
-pub const actual_locking_tx_ada_amount = {data["locking_tx_ada_amount"]}
 
 pub fn final_snapshot_membership_proof() -> Proof {{
   Proof {{

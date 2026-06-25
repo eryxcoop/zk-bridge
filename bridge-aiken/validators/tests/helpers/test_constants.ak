@@ -29,8 +29,11 @@ pub const chain_a_destination_address: Address =
     stake_credential: None,
   }
 
+// Must equal the destination credential baked into the canonical locking-tx
+// body (and thus into `final_locking_tx_hash`), so the on-chain body-hash check
+// and the minted-token destination check both line up with the fixture.
 pub const destination_chain_address =
-  VerificationKey("my_verification_key_in_chain_B")
+  bridge_fixture.actual_locking_tx_destination_address
 
 pub const locked_assets_utxo_ref: OutputReference =
   OutputReference { transaction_id: locking_transaction_id, output_index: 0 }

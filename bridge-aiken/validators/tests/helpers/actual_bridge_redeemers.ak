@@ -9,12 +9,16 @@ use tests/helpers/bridge_locking_tx
 use tests/helpers/test_constants
 
 pub fn actual_bridge_mint_redeemer() -> MintingValidatorRedeemer {
-  let locking_tx_input_output_reference = bridge_fixture.actual_locking_tx_input_output_reference
-  let locking_tx_input_payment_credential = bridge_fixture.actual_locking_tx_input_payment_credential
-  let locking_tx_input_datum = bridge_fixture.actual_locking_tx_input_datum
-  let locking_tx_destination_address = bridge_fixture.actual_locking_tx_destination_address
+  let locking_tx_input_output_reference =
+    bridge_fixture.actual_locking_tx_input_output_reference
+  let locking_tx_output_address =
+    bridge_fixture.actual_locking_tx_output_address
+  let locking_tx_output_lovelace =
+    bridge_fixture.actual_locking_tx_output_lovelace
+  let locking_tx_destination_address =
+    bridge_fixture.actual_locking_tx_destination_address
   let locking_tx_asset_amount = bridge_fixture.actual_locking_tx_asset_amount
-  let locking_tx_ada_amount = bridge_fixture.actual_locking_tx_ada_amount
+  let locking_tx_fee = bridge_fixture.actual_locking_tx_fee
 
   MintingValidatorRedeemer {
     tx_snapshot_certificate_hash: #"6c6f636b696e675f74785f63657274696669636174655f68617368",
@@ -48,13 +52,13 @@ pub fn actual_bridge_mint_redeemer() -> MintingValidatorRedeemer {
     locking_tx_hash: bridge_fixture.final_locking_tx_hash,
     locking_tx_input_output_reference_tx_id: locking_tx_input_output_reference.transaction_id,
     locking_tx_input_output_reference_output_index: locking_tx_input_output_reference.output_index,
-    locking_tx_input_payment_credential,
-    locking_tx_input_datum,
+    locking_tx_output_address,
+    locking_tx_output_lovelace,
     locking_tx_destination_payment_credential: bridge_locking_tx.payment_credential_bytes(
       locking_tx_destination_address,
     ),
     locking_tx_asset_amount,
-    locking_tx_ada_amount,
+    locking_tx_fee,
   }
 }
 

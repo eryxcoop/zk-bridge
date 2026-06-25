@@ -6,15 +6,17 @@ use tests/helpers/minting_redeemer.{
   minting_validator_redeemer_with_invalid_merkle_proof,
   minting_validator_redeemer_with_invalid_snapshot_root,
   minting_validator_redeemer_with_invalid_sub_root,
+  minting_validator_redeemer_with_tampered_locking_body,
   simple_minting_validator_redeemer, valid_snapshot_membership_minting_redeemer,
 }
 use tests/helpers/minting_tx.{
+  minting_tx_with_an_incorrect_mint_value,
   minting_tx_with_incorrect_parent_certificate,
   minting_tx_with_incorrect_phase2_statement_hash,
   minting_tx_with_phase2_receipt_as_reference_input,
-  minting_tx_without_phase2_receipt, minting_tx_without_tx_updater_nft,
-  simple_minting_tx, simple_minting_tx_with_many_inputs,
-  simple_minting_tx_with_many_outputs,
+  minting_tx_with_wrong_mint_destination, minting_tx_without_phase2_receipt,
+  minting_tx_without_tx_updater_nft, simple_minting_tx,
+  simple_minting_tx_with_many_inputs, simple_minting_tx_with_many_outputs,
   simple_minting_tx_with_many_reference_inputs,
   simple_minting_tx_with_mismatched_txs_updater_tx_id,
 }
@@ -140,5 +142,30 @@ test minting_validator_requires_matching_txs_updater_tx_id() fail {
   run_minting_validator(
     valid_snapshot_membership_minting_redeemer(),
     simple_minting_tx_with_mismatched_txs_updater_tx_id(),
+  )
+}
+
+// The locking-tx body fields must reconstruct to the proved `locking_tx_hash`:
+// tampering with any body field (here `output_lovelace`) must be rejected.
+test minting_validator_rejects_body_not_matching_locking_tx_hash() fail {
+  run_minting_validator(
+    minting_validator_redeemer_with_tampered_locking_body(),
+    simple_minting_tx(),
+  )
+}
+
+// The minted amount must equal the locked asset amount.
+test minting_validator_rejects_mint_amount_not_matching_locked() fail {
+  run_minting_validator(
+    valid_snapshot_membership_minting_redeemer(),
+    minting_tx_with_an_incorrect_mint_value(),
+  )
+}
+
+// The minted bridge tokens must be sent to the locking-tx destination credential.
+test minting_validator_rejects_wrong_mint_destination() fail {
+  run_minting_validator(
+    valid_snapshot_membership_minting_redeemer(),
+    minting_tx_with_wrong_mint_destination(),
   )
 }
