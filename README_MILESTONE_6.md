@@ -25,6 +25,47 @@ aggregation proof produced by Mithril is generated with Halo2. That
 meant we needed to verify a Halo2 proof in Cardano. That's something we
 hadn't done in previous milestones. And forced many changes in our bridge.
 
+## Verifying the bridge's Groth16 proofs
+
+This was the easiest part. The two proofs the bridge itself produces are
+Groth16 proofs over the BLS12-381 curve, so they map directly onto Cardano's
+native BLS12-381 builtins. We verify them in Aiken through
+`ak_381/groth16.groth_verify` (wrapped by `zk/verification.zk_verify`),
+which keeps them cheap compared to the Halo2 verification described below.
+Each proof is wired into a specific validator:
+
+- **Snapshot membership** is checked in the minting validator
+  (`validators/minting.ak`, via `verify_transaction_is_present_in_snapshot`
+  → `snapshot_membership.proof_verifies`). It proves that the locking
+  transaction's hash is included in the Mithril
+  `cardano_transactions` snapshot. Its public inputs are the locking tx
+  hash, the merkle sub-root, and the snapshot's
+  `cardano_transactions_merkle_root`. That snapshot root is taken from
+  the Mithril certificate the same transaction already validates, so the
+  proof is anchored to settled, certified chain state rather than to a
+  free-floating value.
+
+- **Tx-set update** is checked in the txs-updater minting validator
+  (`validators/txs_updater_minting.ak`, via `txs_updater_zk_proof_is_valid`).
+  It proves that the on-chain set of already-used locking transactions was
+  correctly updated from `old_merkle_root` to `new_merkle_root` by inserting
+  that locking tx id, which is what prevents the same locking transaction
+  from being bridged twice. The old/new roots are bound to the updater
+  UTxO's datum, and the validator additionally mints exactly
+  `locking_tx_asset_amount` of the bridge asset.
+
+In both cases the proof components (`piA`/`piB`/`piC`) and the public-input
+values travel inside each validator's redeemer, while the verifying keys are
+committed under `lib/zk/` (`snapshot_membership_vk.ak`, `tx_set_update_vk.ak`).
+Because a BLS12-381 scalar cannot hold a full 256-bit digest, every 32-byte
+public input is split into a high/low pair of 16-byte field elements before
+verification (`lib/zk/public_input_packing.ak`). Finally, the two proofs are
+tied together: `tx_id_in_both_redeemers_are_equal` forces the same locking tx
+id through both the snapshot-membership and tx-set-update proofs within a
+single bridge mint transaction, so the minted amount, the membership claim,
+and the set update all refer to the same locking transaction.
+
+
 ## Verifying Halo2 proofs
 
 For this, we used the
@@ -168,6 +209,11 @@ cd bridge-aiken
 ./scripts/bridge.sh bootstrap --link
 uv sync
 
+# One-time setup: compile the Circom circuits the bridge flow proves against.
+# Re-run whenever a `.circom` source changes. Requires `circom` on PATH.
+(cd ../circuit_transaction_snapshot && ./scripts/build_circuit.sh)
+(cd ../circuit_inclusion_exclusion && ./scripts/build_circuit.sh)
+
 # Recommended short path: workspace/tooling checks, artifact alignment,
 # Aiken unit tests, and the integrated runtime flow.
 ./scripts/bridge.sh run --strict
@@ -185,7 +231,7 @@ If you want to drive the stages separately, you can still use:
 
 ```bash
 # Build only the canonical Mithril STM bundle.
-./scripts/bridge.sh proof-export-bundle
+./scripts/bridge.sh proof-export-bundlejubjub_schnorr_raw.json
 
 # Run the integrated flow without the strict preflight-first posture.
 ./scripts/bridge.sh run

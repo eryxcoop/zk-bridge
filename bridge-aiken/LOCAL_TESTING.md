@@ -191,6 +191,14 @@ aggregated from the per-tx summaries emitted by `tx_publish_summary.py` after ea
 ./scripts/bridge.sh bootstrap --link
 uv sync
 
+# Compile the Circom circuits (once per workstation, and again whenever a
+# `.circom` source changes). The bridge flow proves against these artifacts,
+# so the first `run` will fail with a "No such file or directory" panic from
+# the arkworks fixture exporter if `circuit_build/` is missing. Requires the
+# `circom` binary on PATH.
+(cd ../circuit_transaction_snapshot && ./scripts/build_circuit.sh)
+(cd ../circuit_inclusion_exclusion && ./scripts/build_circuit.sh)
+
 # Sanity checks
 ./scripts/bridge.sh doctor check
 
