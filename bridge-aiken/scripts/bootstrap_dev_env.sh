@@ -70,34 +70,6 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-ensure_workspace_local_cshell() {
-  local sibling_root="$ROOT_DIR/../cshell-0.14.0"
-  local sibling_manifest="$sibling_root/Cargo.toml"
-  local sibling_bin="$sibling_root/target/debug/cshell"
-  local cargo_bin=""
-
-  if [[ -x "$sibling_bin" ]]; then
-    return 0
-  fi
-
-  if [[ ! -f "$sibling_manifest" ]]; then
-    return 0
-  fi
-
-  if [[ "$CHECK_ONLY" == "1" ]]; then
-    return 0
-  fi
-
-  cargo_bin="$(command -v cargo 2>/dev/null || true)"
-  if [[ -z "$cargo_bin" ]]; then
-    echo "Missing cargo; cannot build workspace-local cshell at: $sibling_root" >&2
-    return 1
-  fi
-
-  echo "Building workspace-local cshell from: $sibling_root"
-  "$cargo_bin" build -p cshell --manifest-path "$sibling_manifest"
-}
-
 resolve_source_bin() {
   local out_var="$1"
   local env_var_name="$2"
@@ -124,17 +96,6 @@ resolve_source_bin() {
   fi
 
   if [[ -z "$resolved" ]]; then
-    case "$command_name" in
-      cshell)
-        local local_cshell="$ROOT_DIR/../cshell-0.14.0/target/debug/cshell"
-        if [[ -x "$local_cshell" ]]; then
-          resolved="$local_cshell"
-        fi
-        ;;
-    esac
-  fi
-
-  if [[ -z "$resolved" ]]; then
     resolved="$(command -v "$command_name" 2>/dev/null || true)"
   fi
 
@@ -151,12 +112,9 @@ resolve_source_bin() {
 describe_source_kind() {
   local env_var_name="$1"
   local env_value="${!env_var_name:-}"
-  local command_name="$2"
 
   if [[ -n "$env_value" ]]; then
     echo "$env_var_name"
-  elif [[ "$command_name" == "cshell" && -x "$ROOT_DIR/../cshell-0.14.0/target/debug/cshell" ]]; then
-    echo "workspace-local"
   else
     echo "PATH"
   fi
@@ -218,8 +176,6 @@ export CSHELL_BIN="$TOOLS_BIN_DIR/cshell"
 export DOLOS_BIN="$DOLOS_SOURCE_RESOLVED"
 EOF
 }
-
-ensure_workspace_local_cshell
 
 resolve_source_bin TRIX_SOURCE_RESOLVED TRIX_SOURCE_BIN trix
 resolve_source_bin CSHELL_SOURCE_RESOLVED CSHELL_SOURCE_BIN cshell
