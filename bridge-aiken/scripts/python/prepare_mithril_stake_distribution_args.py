@@ -219,7 +219,7 @@ def build_sd_genesis_args_from_certificate(
     stake_distribution_source_utxo: str,
     stake_distribution_collateral_utxo: str,
 ) -> dict:
-    jubjub = read_json(DATA_DIR / "jubjub_schnorr_preview_genesis_raw.json")
+    jubjub = read_json(DATA_DIR / "jubjub_schnorr_genesis_raw.json")
     metadata = certificate_metadata(certificate)
     protocol_parameters = certificate_protocol_parameters(certificate)
     protocol_message = certificate_protocol_message(certificate)

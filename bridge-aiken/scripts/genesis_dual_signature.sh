@@ -22,7 +22,7 @@ PREPARE_ARGS_PY="$PYTHON_DIR/prepare_genesis_dual_signature_args.py"
 READ_JSON_FIELD_PY="$PYTHON_DIR/read_json_field.py"
 SET_JSON_FIELD_PY="$PYTHON_DIR/set_json_field.py"
 TX_PUBLISH_SUMMARY_PY="$PYTHON_DIR/tx_publish_summary.py"
-GENESIS_DUAL_FIXTURE_PATH="$ROOT_DIR/scripts/data/jubjub_schnorr_preview_genesis_raw.json"
+GENESIS_DUAL_FIXTURE_PATH="$ROOT_DIR/scripts/data/jubjub_schnorr_genesis_raw.json"
 BRIDGE_VERBOSE_CONTEXT="${BRIDGE_VERBOSE_CONTEXT:-genesis-dual-signature-runtime}"
 
 KEEP_GENESIS_DUAL_SIGNATURE_TMP="${KEEP_GENESIS_DUAL_SIGNATURE_TMP:-1}"

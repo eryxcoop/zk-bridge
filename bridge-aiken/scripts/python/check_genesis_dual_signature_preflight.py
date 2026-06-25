@@ -20,7 +20,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--dual-fixture-json",
         type=Path,
-        default=DATA_DIR / "jubjub_schnorr_preview_genesis_raw.json",
+        default=DATA_DIR / "jubjub_schnorr_genesis_raw.json",
     )
     return parser.parse_args()
 

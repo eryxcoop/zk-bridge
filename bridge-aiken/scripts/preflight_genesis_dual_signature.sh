@@ -16,7 +16,7 @@ CHECK_PREFLIGHT_PY="$PYTHON_DIR/check_genesis_dual_signature_preflight.py"
 JUBJUB_CIRCUIT_DIR="$WORKSPACE_DIR/circuit_jubjub_schnorr_verification"
 JUBJUB_BUILD_SCRIPT="$JUBJUB_CIRCUIT_DIR/scripts/build_groth16_artifacts.sh"
 JUBJUB_CARGO_MANIFEST="$JUBJUB_CIRCUIT_DIR/Cargo.toml"
-GENESIS_DUAL_FIXTURE_PATH="$ROOT_DIR/scripts/data/jubjub_schnorr_preview_genesis_raw.json"
+GENESIS_DUAL_FIXTURE_PATH="$ROOT_DIR/scripts/data/jubjub_schnorr_genesis_raw.json"
 BRIDGE_VERBOSE_CONTEXT="${BRIDGE_VERBOSE_CONTEXT:-genesis-dual-signature-preflight}"
 
 # shellcheck disable=SC1090
