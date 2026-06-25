@@ -51,7 +51,7 @@ from a Midnight relation. On top of that, the real circuit has more
 advice columns, more lookups and a richer gate set than the original
 toy examples, which surfaced rough edges in the generic types.
 
-To adapt the tool to be able to generate a verifier for the Mithril circuit we 
+To adapt the tool to be able to generate a verifier for the Mithril circuit we
 had to make the following changes:
 
 - added `plutus_gen/extraction/midnight.rs`: extractor for Midnight relations.
@@ -59,7 +59,7 @@ had to make the following changes:
   and the pipeline's generic types.
 - adjusted in the `plutus_genextraction` directory:
   - `pcs/{gwc.rs, kzg.rs, mod.rs}`,
-  - `data/constants.rs`, 
+  - `data/constants.rs`,
   - `data/extraction_steps/{permutation.rs, vanishing.rs}`.
 - adjusted every file under `data/base_types/` (`commitment.rs`,
   `commitment_data.rs`, `evaluation.rs`, `expression.rs`,
@@ -87,9 +87,9 @@ meant editing those templates. This led to the following changes:
     redeemer is now a generated tuple and the NFT-name hash folds a
     variable-length list of instances instead of a fixed set.
   - `verification_h2.hbs`: externalized the MSM into generated code (so it can
-    be split across the two phases) and made instance handling generic
-    (committed instances, variable instance evals, plus the circuit's "trash"
-    commitments).
+    be split across the two phases to meet the Cardano CPU-budget) and made
+    instance handling generic (committed instances, variable instance evals,
+    plus the circuit's "trash" commitments).
   - `verification_gwc19.hbs`: dropped the `bls_utils` MSM helpers and the
     precomputed `neg_g1_generator`, computing negation/generator inline via
     builtins, and removed a redundant `vanishing_g` re-compression.
@@ -105,7 +105,7 @@ meant editing those templates. This led to the following changes:
   are generator outputs, they can be regenerated on demand via the
   examples (`cargo run --example ...`) rather than versioned.
 
-The template changes here only *enable* the two-phase split — they emit the MSM
+The template changes here only *enable* the two-phase split: they emit the MSM
 as partitionable generated code. The on-chain verifier itself was then split and
 hand-refactored in `bridge-aiken` to fit the Plutus execution-unit and
 transaction-size limits (compact phase-1 → phase-2 hand-off, split-specific MSM
@@ -114,29 +114,15 @@ documented in `bridge-aiken/2_phase_mithril_stm_verification.md`.
 
 ## 5. Add a mithril proof exporter for `bridge-aiken`
 
-This subrepo (`plutus-halo2-verifier-gen`) and `bridge-aiken` live in
-separate worlds: the subrepo is Rust code that builds the circuit and
-produces the off-chain SNARK proof, while `bridge-aiken` is the on-chain
-Aiken/Plutus side that verifies it. They do not share code: the subrepo writes a *proof export*
-to disk and the bridge reads it. That file is the only contract between
-them.
-
-A proof export is a single, self-contained piece of data bundling everything
-the on-chain verifier needs for one Mithril STM proof: the proof bytes,
-the reduced redeemer, the public inputs, the statement hash, etc. The
-same export is consumed in two places (the bridge's on-chain tests and
-the real operational flow) so it has to be **stable and versioned**,
-with a formally defined format rather than whatever the generator happens
-to emit.
-
-If the export were just a dump of the Rust
-generator's internal layout, any internal refactor (a renamed field, a
-changed serialization order) would change the file. If that happened, 
-the bridge would keep reading it against the old format, breaking 
-silently at runtime. A formal exporter plus a
-JSON Schema turn the file into an explicit, validated contract: the
-generator's internals can change freely as long as the export still
-conforms, and if it doesn't, the schema catches it.
+The subrepo (Rust, off-chain proof generation) and `bridge-aiken`
+(on-chain Aiken verification) share no code: the subrepo writes a *proof
+export* to disk and the bridge reads it. That file is the only contract
+between them, so it should be a well-defined intermediary rather than a
+dump of the generator's internal layout — otherwise any internal refactor
+(a renamed field, a changed serialization order) would silently break the
+bridge at runtime. A formal exporter plus a JSON Schema make the contract
+explicit and validated: the generator's internals can change freely as
+long as the export still conforms.
 
 To establish that hand-off we added the following:
 

@@ -12,7 +12,7 @@ in milestone 6:
    single Plutus transaction cannot afford the execution units required
    to verify a Mithril multi-signature SNARK in one shot, so the
    verification is partitioned across two consecutive transactions,
-   `phase1_setup` and `phase2_verify`. This transactions share state through a
+   `phase1_setup` and `phase2_verify`. These transactions share state through a
    datum. `phase1` does the cheap setup work (transcript challenges,
    commitments, etc.) and `phase2` runs the expensive pairing check
    that finishes the SNARK.
@@ -22,11 +22,11 @@ in milestone 6:
    bound to the verified statement. The downstream transactions that
    still depend on Halo2-backed proof receipts
    (`stake_distribution_standard_tx` and `bridge_mint_tx`) do not
-   re-verify the SNARK — they only require the matching
+   re-verify the SNARK, they only require the matching
    `proof_receipt` UTxO to be present, so the cost of "having proven X"
    is paid once and then reused by any transaction that consumes the
-   receipt. `stake_distribution_genesis_tx` is the exception: it is now
-   authenticated directly by the Aiken genesis-certificate path and doesn't 
+   receipt. `stake_distribution_genesis_tx` is the exception: it is
+   authenticated directly by the Aiken genesis-certificate path and doesn't
    consume a proof receipt.
 
 3. **Heavy validators are deployed as reference scripts.** Inlining
@@ -47,14 +47,11 @@ The verified workflow today no longer uses:
 
 The current flow uses:
 
-- 3 distinct Mithril certificate/proof domains
-  - `stake_distribution_genesis`
+- 2 distinct Mithril certificate/proof domains
   - `stake_distribution_standard`
   - `cardano_transactions`
 - 1 shared `publish_phase1_reference_script` tx for the whole `phase12-all` run
-- 2 separate runs of `phase1_setup -> phase2_verify`
-  - `stake_distribution_standard`
-  - `cardano_transactions`
+- 2 separate runs of `phase1_setup -> phase2_verify`, one per each proof domain
 - each run now uses dedicated synthetic source/collateral UTxOs so the
     shared local Dolos process can reuse the one published `Phase1` reference
     script safely across the remaining Halo2 domains

@@ -1,6 +1,7 @@
 # Two-Phase Mithril STM Verification
 
-This document describes how the Mithril STM (Halo2 Multi-Open) verifier is split
+This document describes how the Mithril STM (Halo2 Multi-Open) verifier generated
+by our `plutus-halo2-verifier-gen` fork is split
 across two transactions on-chain, why the split exists, what each phase
 computes, which NFTs are produced, and which downstream validators consume
 them.
@@ -169,7 +170,7 @@ the same proof object end-to-end.
 ## Where the proof receipt is used
 
 The proof receipt is the bridge between the Mithril STM verifier and the rest
-of the bridge logic. Three validators consume it:
+of the bridge logic. Two validators consume it:
 
 - **`validators/stake_distribution.ak`**, `stake_distribution_validator_spend`
   (line ~235): when rotating the stake-distribution certificate, the
@@ -177,11 +178,6 @@ of the bridge logic. Three validators consume it:
   receipt's `statement_hash` (via `proof_receipt.statement_hash`) and uses it
   as the Mithril signed message that the new certificate must match against
   the parent certificate stored in the input datum.
-
-- **`validators/stake_distribution.ak`**, `stake_distribution_validator_mint`
-  (line ~296): when minting the genesis stake-distribution certificate, it
-  requires `proof_receipt.has_input(tx, env.phase2_asset_policy_id)`, which
-  means that *some* phase-2 receipt must be present in the transaction.
 
 - **`validators/minting.ak`**, `minting_validator` (line ~129): when minting
   bridge tokens, the validator pulls the receipt's `statement_hash` and
